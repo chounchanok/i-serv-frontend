@@ -1,23 +1,43 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { $api } from '@/utils/api' // นำเข้า $api เพื่อใช้ยิง API
 
 // หากต้องการใช้ VueApexCharts ในไฟล์นี้ (ถ้าไม่ได้ลงทะเบียน Global ไว้)
 // import VueApexCharts from 'vue3-apexcharts'
 
 const router = useRouter()
 
-// 1. Mock Data (จำลองข้อมูล รอการเชื่อมต่อ API ในอนาคต)
-const myTasks = ref([
-  { id: 1, name: 'อัปเดตการตั้งค่า Nginx Server', brand: 'IT Infrastructure', priority: 'H', status: { status: 'submitted' } },
-  { id: 2, name: 'รัน Laravel Migration สำหรับ Phase 2', brand: 'Backend', priority: 'M', status: { status: 'pending' } },
-  { id: 3, name: 'สรุปสเปกและราคา Cisco Catalyst', brand: 'Network', priority: 'L', status: { status: 'pending' } },
-])
+// 1. เปลี่ยนจาก Mock Data เป็น Array ว่างเพื่อรอรับข้อมูลจาก API
+const myTasks = ref([])
 
 const PRIORITY_LABELS = { H: 'สูง', M: 'กลาง', L: 'ต่ำ' }
 const PRIORITY_COLORS = { H: '#EF4444', M: '#F5A623', L: '#22C55E' }
 
-// 2. Computed Logic แบบเดียวกับ React
+// ฟังก์ชันสำหรับดึงข้อมูล Task จาก API
+const fetchTasks = async () => {
+  try {
+    const response = await $api('/employee/my-tasks')
+    
+    // 2. Map ข้อมูลจาก Backend (TaskAssignment + Task) ให้เข้ากับ Template Frontend เดิม
+    myTasks.value = response.map(item => ({
+      id: item.id, // assignment id
+      name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน',
+      brand: item.task_detail?.target_brands ? String(item.task_detail.target_brands) : 'IT Infrastructure',
+      priority: item.task_detail?.priority || 'M',
+      status: { status: item.status } // แปลงให้อยู่ในโครงสร้างเดิม (item.status.status)
+    }))
+  } catch (error) {
+    console.error('Error fetching employee tasks:', error)
+  }
+}
+
+// 3. เรียกใช้ฟังก์ชันตอนโหลด Component
+onMounted(() => {
+  fetchTasks()
+})
+
+// 4. Computed Logic แบบเดิม
 const submittedTasks = computed(() => myTasks.value.filter(t => t.status.status === 'submitted'))
 const pendingTasks = computed(() => myTasks.value.filter(t => t.status.status === 'pending'))
 
@@ -33,7 +53,7 @@ const dateStr = computed(() => {
   })
 })
 
-// 3. Chart Configuration (แปลงเป็น ApexCharts)
+// 5. Chart Configuration 
 const chartSeries = computed(() => [submittedTasks.value.length, pendingTasks.value.length])
 const chartOptions = computed(() => ({
   chart: {

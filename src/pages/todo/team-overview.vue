@@ -1,54 +1,69 @@
 <script setup>
-import { computed, ref } from 'vue'
-
-// --- Mock Data & Constants ---
-const employees = ref([
-  { id: 'e1', name: 'Champ Dev', store: 'Store A', position: 'Senior Full-stack' },
-  { id: 'e2', name: 'Pum SEO', store: 'Store B', position: 'SEO Specialist' },
-  { id: 'e3', name: 'Pon Model', store: 'Store A', position: 'Photographer' },
-])
-
-const PRIORITY_LABELS = { 1: 'สูง', 2: 'กลาง', 3: 'น้อย' }
-const PRIORITY_COLORS = { 1: '#EF4444', 2: '#F5A623', 3: '#3B82F6' }
-
-// จำลองฟังก์ชันดึงงาน (ในอนาคตเปลี่ยนเป็น AppStore หรือ API)
-const getEmployeeTasks = (empId) => {
-  if (empId === 'e1') return [
-    { task: { id: 't1', name: 'Nginx Config', reportType: 'Server', brand: 'IT', priority: 1 }, status: { status: 'submitted', submittedAt: '10:30' } },
-    { task: { id: 't2', name: 'Laravel Migration', reportType: 'DB', brand: 'Backend', priority: 2 }, status: { status: 'pending' } }
-  ]
-  return []
-}
+import { computed, ref, onMounted } from 'vue'
+import { $api } from '@/utils/api'
 
 // --- State Management ---
+const rawSummaries = ref([]) // เก็บข้อมูลสรุปทีมจาก API
 const filterStore = ref('all')
 const selectedEmployee = ref(null)
+const selectedEmployeeTasks = ref([]) // เก็บรายการงานของพนักงานที่ถูกคลิก
 const isModalVisible = ref(false)
 
-// --- Logic ---
-const summaries = computed(() => {
-  return employees.value.map(emp => {
-    const tasks = getEmployeeTasks(emp.id)
-    const submitted = tasks.filter(t => t.status.status === 'submitted').length
-    const total = tasks.length
-    return {
-      employee: emp,
-      total,
-      submitted,
-      pending: total - submitted,
-      pct: total > 0 ? Math.round((submitted / total) * 100) : 0,
-    }
-  })
+// รองรับทั้งแบบตัวเลขและตัวอักษรเพื่อความครอบคลุม
+const PRIORITY_LABELS = { H: 'สูง', M: 'กลาง', L: 'ต่ำ', 1: 'สูง', 2: 'กลาง', 3: 'ต่ำ' }
+const PRIORITY_COLORS = { H: '#EF4444', M: '#F5A623', L: '#22C55E', 1: '#EF4444', 2: '#F5A623', 3: '#22C55E' }
+
+// --- API Calls ---
+const fetchTeamSummary = async () => {
+  try {
+    const response = await $api('/admin/team-summary')
+    rawSummaries.value = response.summaries || []
+  } catch (error) {
+    console.error('Error fetching team summary:', error)
+  }
+}
+
+const openDetail = async (summary) => {
+  selectedEmployee.value = summary
+  try {
+    // โหลดรายละเอียดงานของพนักงานคนนั้นๆ
+    const tasks = await $api(`/admin/employee-tasks/${summary.employee.id}`)
+    
+    // Map ข้อมูลให้อยู่ในรูปแบบที่ Modal ต้องการ
+    selectedEmployeeTasks.value = tasks.map(item => ({
+      status: { 
+        status: item.status, 
+        submittedAt: item.submitted_at 
+      },
+      task: { 
+        id: item.task_detail?.id, 
+        name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน', 
+        reportType: item.task_detail?.report_type || 'General', 
+        brand: item.task_detail?.target_brands ? String(item.task_detail.target_brands) : 'ไม่ระบุ', 
+        priority: item.task_detail?.priority || 'M' 
+      }
+    }))
+
+    isModalVisible.value = true
+  } catch (error) {
+    console.error('Error fetching employee tasks details:', error)
+  }
+}
+
+onMounted(() => {
+  fetchTeamSummary()
 })
 
-const stores = computed(() => ['all', ...new Set(employees.value.map(e => e.store))])
+// --- Logic & Computed ---
+const stores = computed(() => ['all', ...new Set(rawSummaries.value.map(s => s.employee.store).filter(Boolean))])
 
 const filteredSummaries = computed(() => {
   return filterStore.value === 'all' 
-    ? summaries.value 
-    : summaries.value.filter(s => s.employee.store === filterStore.value)
+    ? rawSummaries.value 
+    : rawSummaries.value.filter(s => s.employee.store === filterStore.value)
 })
 
+// คำนวณสถิติใหม่จากข้อมูลที่ถูกกรอง (ไม่ต้องพึ่ง apiStats เพื่อให้ตัวเลขเปลี่ยนตามการกรองร้านค้า)
 const stats = computed(() => ({
   total: filteredSummaries.value.length,
   fullySubmitted: filteredSummaries.value.filter(s => s.pct === 100).length,
@@ -72,9 +87,10 @@ const chartOptions = computed(() => ({
   plotOptions: { bar: { borderRadius: 6, columnWidth: '35%', distributed: true } },
   dataLabels: { enabled: false },
   colors: filteredSummaries.value.map(s => s.pct >= 80 ? '#22C55E' : s.pct >= 50 ? '#F5A623' : '#EF4444'),
-  xaxis: { categories: filteredSummaries.value.map(s => s.employee.name.split(' ')[0]) },
+  xaxis: { categories: filteredSummaries.value.map(s => s.employee.name.split(' ')[0] || 'Unknown') },
   yaxis: { max: 100, labels: { formatter: val => `${val}%` } },
-  tooltip: { y: { formatter: val => `${val}%` } }
+  tooltip: { y: { formatter: val => `${val}%` } },
+  legend: { show: false }
 }))
 
 // --- Export CSV ---
@@ -91,11 +107,6 @@ const handleExport = () => {
   link.href = url
   link.download = `team-report-${new Date().toISOString().split('T')[0]}.csv`
   link.click()
-}
-
-const openDetail = (summary) => {
-  selectedEmployee.value = summary
-  isModalVisible.value = true
 }
 </script>
 
@@ -153,7 +164,10 @@ const openDetail = (summary) => {
 
     <VCard border elevation="0" class="pa-6 mb-6" style="border-radius: 16px;">
       <h3 class="text-subtitle-1 font-weight-bold mb-4">% การส่งงานของแต่ละพนักงาน</h3>
-      <VueApexCharts :options="chartOptions" :series="chartSeries" height="250" />
+      <div v-if="filteredSummaries.length === 0" class="d-flex justify-center align-center text-medium-emphasis" style="height: 250px;">
+        ไม่มีข้อมูลสำหรับแสดงผล
+      </div>
+      <VueApexCharts v-else :options="chartOptions" :series="chartSeries" height="250" />
     </VCard>
 
     <VCard border elevation="0" style="border-radius: 16px;">
@@ -170,12 +184,14 @@ const openDetail = (summary) => {
       >
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-3">
-            <VAvatar size="32" color="primary" class="font-weight-bold text-white">{{ item.employee.name[0] }}</VAvatar>
-            <span class="text-subtitle-2">{{ item.employee.name }}</span>
+            <VAvatar size="32" color="primary" class="font-weight-bold text-white">
+              {{ item.employee.name ? item.employee.name[0] : 'U' }}
+            </VAvatar>
+            <span class="text-subtitle-2">{{ item.employee.name || 'ไม่ระบุชื่อ' }}</span>
           </div>
         </template>
         <template #item.store="{ item }">
-          <span class="text-body-2">{{ item.employee.store }}</span>
+          <span class="text-body-2">{{ item.employee.store || 'ไม่ระบุ' }}</span>
         </template>
         <template #item.submitted="{ item }">
           <span class="text-success font-weight-bold">{{ item.submitted }}</span>
@@ -216,17 +232,34 @@ const openDetail = (summary) => {
           </VRow>
 
           <h4 class="text-subtitle-2 mb-3 text-uppercase">รายการรายงานวันนี้</h4>
-          <div class="d-flex flex-column gap-3">
-            <VCard v-for="taskItem in getEmployeeTasks(selectedEmployee.employee.id)" :key="taskItem.task.id" border elevation="0" class="pa-3" 
-                   :style="{ backgroundColor: taskItem.status.status === 'submitted' ? '#F0FDF4' : '#FFF9E6' }">
+          
+          <div v-if="selectedEmployeeTasks.length === 0" class="text-center py-4 text-medium-emphasis">
+            ไม่พบรายการงาน
+          </div>
+          
+          <div v-else class="d-flex flex-column gap-3">
+            <VCard 
+              v-for="taskItem in selectedEmployeeTasks" 
+              :key="taskItem.task.id" 
+              border elevation="0" class="pa-3" 
+              :style="{ backgroundColor: taskItem.status.status === 'submitted' ? '#F0FDF4' : '#FFF9E6' }"
+            >
               <div class="d-flex align-start gap-2">
-                <VChip :color="PRIORITY_COLORS[taskItem.task.priority]" size="x-small" label class="text-white">P{{ taskItem.task.priority }}</VChip>
+                <VChip 
+                  :color="PRIORITY_COLORS[taskItem.task.priority] || '#3B82F6'" 
+                  size="x-small" 
+                  label class="text-white"
+                >
+                  P{{ taskItem.task.priority }}
+                </VChip>
                 <div class="flex-grow-1">
                   <p class="text-subtitle-2 mb-0 font-weight-bold">{{ taskItem.task.name }}</p>
                   <p class="text-caption mb-0">{{ taskItem.task.reportType }} • {{ taskItem.task.brand }}</p>
                 </div>
-                <VIcon :icon="taskItem.status.status === 'submitted' ? 'tabler-circle-check' : 'tabler-clock'" 
-                       :color="taskItem.status.status === 'submitted' ? 'success' : 'warning'" />
+                <VIcon 
+                  :icon="taskItem.status.status === 'submitted' ? 'tabler-circle-check' : 'tabler-clock'" 
+                  :color="taskItem.status.status === 'submitted' ? 'success' : 'warning'" 
+                />
               </div>
             </VCard>
           </div>

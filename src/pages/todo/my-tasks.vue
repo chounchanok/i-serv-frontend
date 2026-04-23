@@ -1,41 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { $api } from '@/utils/api' // นำเข้า $api สำหรับยิง API
 
-// 1. Mock Data (จำลองข้อมูล รอการเชื่อมต่อ API ในอนาคต)
-const myTasks = ref([
-  { 
-    id: 1, 
-    name: 'อัปเดตการตั้งค่า Nginx Server', 
-    brand: 'IT Infrastructure', 
-    priority: 'H', 
-    dueDate: '2026-04-25',
-    status: { status: 'submitted' } 
-  },
-  { 
-    id: 2, 
-    name: 'รัน Laravel Migration สำหรับ Phase 2', 
-    brand: 'Backend', 
-    priority: 'M', 
-    dueDate: '2026-04-26',
-    status: { status: 'pending' } 
-  },
-  { 
-    id: 3, 
-    name: 'สรุปสเปกและราคา Cisco Catalyst', 
-    brand: 'Network', 
-    priority: 'L', 
-    dueDate: '2026-04-27',
-    status: { status: 'pending' } 
-  },
-  { 
-    id: 4, 
-    name: 'วางแผน Technical SEO', 
-    brand: 'Client: Pum', 
-    priority: 'H', 
-    dueDate: '2026-04-28',
-    status: { status: 'pending' } 
-  },
-])
+// 1. เปลี่ยน Mock Data เป็น Array ว่าง
+const myTasks = ref([])
 
 const PRIORITY_LABELS = { H: 'สูง', M: 'กลาง', L: 'ต่ำ' }
 const PRIORITY_COLORS = { H: 'error', M: 'warning', L: 'success' }
@@ -51,7 +19,45 @@ const statusOptions = [
   { title: 'ส่งแล้ว', value: 'submitted' }
 ]
 
-// 3. Computed Logic สำหรับกรองข้อมูล
+// 3. ฟังก์ชันดึงข้อมูล Task ของพนักงานจาก API
+const fetchTasks = async () => {
+  try {
+    const response = await $api('/employee/my-tasks')
+    
+    // Map ข้อมูลให้ตรงกับโครงสร้างเดิมที่ UI ต้องการ
+    myTasks.value = response.map(item => ({
+      id: item.id, // assignment id
+      name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน',
+      brand: item.task_detail?.target_brands ? String(item.task_detail.target_brands) : 'ไม่มีระบุ',
+      priority: item.task_detail?.priority || 'M',
+      dueDate: item.task_detail?.end_date || '',
+      status: { status: item.status }
+    }))
+  } catch (error) {
+    console.error('Error fetching tasks:', error)
+  }
+}
+
+// 4. ฟังก์ชันสำหรับกดส่งงาน (เรียก API POST)
+const submitTask = async (assignmentId) => {
+  try {
+    await $api(`/employee/tasks/${assignmentId}/submit`, {
+      method: 'POST'
+    })
+    
+    // เมื่อส่งงานสำเร็จ ให้ดึงข้อมูลมาอัปเดตตารางใหม่
+    fetchTasks()
+  } catch (error) {
+    console.error('Error submitting task:', error)
+  }
+}
+
+// ดึงข้อมูลเมื่อ Component โหลด
+onMounted(() => {
+  fetchTasks()
+})
+
+// 5. Computed Logic สำหรับกรองข้อมูล
 const filteredTasks = computed(() => {
   return myTasks.value.filter(task => {
     // กรองตามคำค้นหา
@@ -67,7 +73,7 @@ const filteredTasks = computed(() => {
 
 // ฟังก์ชันแปลงรูปแบบวันที่
 const formatDate = (dateString) => {
-  if (!dateString) return ''
+  if (!dateString) return 'ไม่มีกำหนด'
   const date = new Date(dateString)
   return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
 }
@@ -157,7 +163,19 @@ const formatDate = (dateString) => {
           >
             {{ item.status.status === 'submitted' ? 'ส่งแล้ว' : 'รอดำเนินการ' }}
           </VChip>
+          
           <VBtn
+            v-if="item.status.status === 'pending'"
+            color="success"
+            size="small"
+            variant="flat"
+            @click="submitTask(item.id)"
+          >
+            <VIcon icon="tabler-check" class="me-1" size="16"/>
+            ส่งงาน
+          </VBtn>
+          <VBtn
+            v-else
             icon
             variant="text"
             size="small"

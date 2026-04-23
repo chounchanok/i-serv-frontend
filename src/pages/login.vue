@@ -91,6 +91,7 @@ const login = async () => {
         ability.update(userAbilityRules)
         useCookie('userData').value = userData
         useCookie('accessToken').value = accessToken
+        localStorage.setItem('accessToken', accessToken)
 
         Swal.fire({
             title: "ยินดีต้อนรับเข้าสู่ระบบ",

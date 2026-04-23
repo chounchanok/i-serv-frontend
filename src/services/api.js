@@ -4,6 +4,7 @@ import axios from 'axios'
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL, // URL หลักของ API
   timeout: 600000, // กำหนด timeout เป็น 600,000 ms = 10 นาที สำหรับทุก request
+  withCredentials: true,
 })
 
 export default {
