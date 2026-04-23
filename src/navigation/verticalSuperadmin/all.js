@@ -1,6 +1,16 @@
 export default [
   { heading: 'Apps & Pages' },
   {
+    title: 'To-Do List',
+    icon: { icon: 'tabler-list-check' },
+    children: [
+      {
+        title: 'แดชบอร์ดพนักงาน',
+        to: 'todo-employee-dashboard', // **จุดสำคัญ:** ตรงนี้ต้องใส่ชื่อ Route ที่ระบบสร้างให้ (อ่านคำอธิบายด้านล่าง)
+      },
+    ],
+  },
+  {
     title: 'Dashboards',
     icon: { icon: 'tabler-file' },
     children: [
