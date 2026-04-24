@@ -4,7 +4,6 @@ import axios from 'axios'
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL, // URL หลักของ API
   timeout: 600000, // กำหนด timeout เป็น 600,000 ms = 10 นาที สำหรับทุก request
-  withCredentials: true,
 })
 
 export default {
@@ -848,5 +847,9 @@ export default {
         'Content-Type': 'multipart/form-data',
       },
     })
+  },
+
+  get_account_by_user_position(data) {
+    return apiClient.post('/api/backend/get_account_by_user_position', data)
   },
 }

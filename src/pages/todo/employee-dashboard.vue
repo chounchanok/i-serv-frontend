@@ -17,15 +17,25 @@ const PRIORITY_COLORS = { H: '#EF4444', M: '#F5A623', L: '#22C55E' }
 // ฟังก์ชันสำหรับดึงข้อมูล Task จาก API
 const fetchTasks = async () => {
   try {
-    const response = await $api('/employee/my-tasks')
+    // 1. ดึงข้อมูล User จาก LocalStorage 
+    const userDataString = localStorage.getItem('userData')
+    const userData = userDataString ? JSON.parse(userDataString) : null
     
-    // 2. Map ข้อมูลจาก Backend (TaskAssignment + Task) ให้เข้ากับ Template Frontend เดิม
+    if (!userData || !userData.id) {
+      console.error('ไม่พบข้อมูลพนักงานในระบบ')
+      return
+    }
+
+    // 2. ส่ง userId ไปทาง Query String (?userId=...)
+    const response = await $api(`/employee/my-tasks?userId=${userData.id}`)
+    
+    // 3. Map ข้อมูล (อัปเดตตรง brand ให้แสดง Group แทน เพราะ Backend เราเซฟ Group ID ลงไปใน column target_brands)
     myTasks.value = response.map(item => ({
-      id: item.id, // assignment id
+      id: item.id,
       name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน',
-      brand: item.task_detail?.target_brands ? String(item.task_detail.target_brands) : 'IT Infrastructure',
+      brand: item.task_detail?.target_brands ? `Group ID: ${item.task_detail.target_brands}` : 'ทั่วไป',
       priority: item.task_detail?.priority || 'M',
-      status: { status: item.status } // แปลงให้อยู่ในโครงสร้างเดิม (item.status.status)
+      status: { status: item.status }
     }))
   } catch (error) {
     console.error('Error fetching employee tasks:', error)
@@ -97,7 +107,7 @@ const chartOptions = computed(() => ({
 </script>
 
 <template>
-  <VCard class="pa-6">
+  <VCard class="pa-6" style="background-color: whitesmoke;">
     <div class="mb-6">
       <h2 class="text-h5 font-weight-bold text-high-emphasis mb-1">แดชบอร์ดพนักงาน</h2>
       <p class="text-body-2 text-medium-emphasis mb-0">{{ dateStr }}</p>
@@ -105,7 +115,7 @@ const chartOptions = computed(() => ({
 
     <VRow class="mb-2">
       <VCol cols="12" sm="6" md="3">
-        <VCard elevation="0" border class="d-flex align-center pa-5" style="border-radius: 16px; background-color: #f8f9fa;">
+        <VCard elevation="0" border class="d-flex align-center pa-5" style="border-radius: 16px;">
           <VAvatar rounded="lg" color="primary" variant="tonal" class="me-4" size="44">
             <VIcon icon="tabler-trending-up" size="24" />
           </VAvatar>
@@ -117,7 +127,7 @@ const chartOptions = computed(() => ({
       </VCol>
       
       <VCol cols="12" sm="6" md="3">
-        <VCard elevation="0" border class="d-flex align-center pa-5" style="border-radius: 16px; background-color: #f8f9fa;">
+        <VCard elevation="0" border class="d-flex align-center pa-5" style="border-radius: 16px;">
           <VAvatar rounded="lg" color="success" variant="tonal" class="me-4" size="44">
             <VIcon icon="tabler-circle-check" size="24" />
           </VAvatar>
@@ -129,7 +139,7 @@ const chartOptions = computed(() => ({
       </VCol>
 
       <VCol cols="12" sm="6" md="3">
-        <VCard elevation="0" border class="d-flex align-center pa-5" style="border-radius: 16px; background-color: #f8f9fa;">
+        <VCard elevation="0" border class="d-flex align-center pa-5" style="border-radius: 16px;">
           <VAvatar rounded="lg" color="warning" variant="tonal" class="me-4" size="44">
             <VIcon icon="tabler-clock" size="24" />
           </VAvatar>
@@ -141,7 +151,7 @@ const chartOptions = computed(() => ({
       </VCol>
 
       <VCol cols="12" sm="6" md="3">
-        <VCard elevation="0" border class="d-flex align-center pa-5" style="border-radius: 16px; background-color: #f8f9fa;">
+        <VCard elevation="0" border class="d-flex align-center pa-5" style="border-radius: 16px;">
           <VAvatar 
             rounded="lg" 
             :color="pct >= 80 ? 'success' : pct >= 50 ? 'warning' : 'error'" 

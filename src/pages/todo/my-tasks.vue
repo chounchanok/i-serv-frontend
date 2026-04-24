@@ -1,210 +1,241 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
-import { $api } from '@/utils/api' // นำเข้า $api สำหรับยิง API
+import { ref, computed, onMounted } from 'vue'
+import { $api } from '@/utils/api'
 
-// 1. เปลี่ยน Mock Data เป็น Array ว่าง
 const myTasks = ref([])
+const expandedId = ref(null)
 
-const PRIORITY_LABELS = { H: 'สูง', M: 'กลาง', L: 'ต่ำ' }
-const PRIORITY_COLORS = { H: 'error', M: 'warning', L: 'success' }
+const PRIORITY_LABELS = { 1: 'สูง', 2: 'กลาง', 3: 'น้อย', 'H': 'สูง', 'M': 'กลาง', 'L': 'น้อย' }
+const PRIORITY_COLORS = { 1: '#EF4444', 2: '#F5A623', 3: '#3B82F6', 'H': '#EF4444', 'M': '#F5A623', 'L': '#3B82F6' }
 
-// 2. State สำหรับการกรอง (Filter) และค้นหา
-const searchQuery = ref('')
-const selectedStatus = ref('all') // 'all', 'pending', 'submitted'
-
-// ตัวเลือกสำหรับ Dropdown
-const statusOptions = [
-  { title: 'ทั้งหมด', value: 'all' },
-  { title: 'รอดำเนินการ', value: 'pending' },
-  { title: 'ส่งแล้ว', value: 'submitted' }
-]
-
-// 3. ฟังก์ชันดึงข้อมูล Task ของพนักงานจาก API
 const fetchTasks = async () => {
   try {
-    const response = await $api('/employee/my-tasks')
+    const userDataString = localStorage.getItem('userData')
+    const userData = userDataString ? JSON.parse(userDataString) : null
     
-    // Map ข้อมูลให้ตรงกับโครงสร้างเดิมที่ UI ต้องการ
+    if (!userData || !userData.id) {
+      console.error('ไม่พบข้อมูลพนักงานในระบบ')
+      return
+    }
+
+    const response = await $api(`/employee/my-tasks/${userData.id}`)
+    
     myTasks.value = response.map(item => ({
-      id: item.id, // assignment id
+      id: item.id,
       name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน',
-      brand: item.task_detail?.target_brands ? String(item.task_detail.target_brands) : 'ไม่มีระบุ',
+      brand: item.task_detail?.target_brands ? `Group ID: ${item.task_detail.target_brands}` : 'ทั่วไป',
+      reportType: item.task_detail?.report_type || 'General',
       priority: item.task_detail?.priority || 'M',
-      dueDate: item.task_detail?.end_date || '',
-      status: { status: item.status }
+      description: item.task_detail?.description || '',
+      targetBrands: item.task_detail?.target_brands ? [String(item.task_detail.target_brands)] : [],
+      status: item.status,
+      // แปลงเวลาที่ส่งงานให้เป็น HH:mm (ถ้ามี)
+      submittedAt: item.submitted_at 
+        ? new Date(item.submitted_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
+        : ''
     }))
   } catch (error) {
     console.error('Error fetching tasks:', error)
   }
 }
 
-// 4. ฟังก์ชันสำหรับกดส่งงาน (เรียก API POST)
+onMounted(() => {
+  fetchTasks()
+})
+
+// ฟังก์ชันกดส่งงาน
 const submitTask = async (assignmentId) => {
   try {
+    const userDataString = localStorage.getItem('userData')
+    const userData = userDataString ? JSON.parse(userDataString) : {}
+
     await $api(`/employee/tasks/${assignmentId}/submit`, {
-      method: 'POST'
+      method: 'POST',
+      body: { userId: userData.id }
     })
     
-    // เมื่อส่งงานสำเร็จ ให้ดึงข้อมูลมาอัปเดตตารางใหม่
-    fetchTasks()
+    fetchTasks() // รีเฟรชข้อมูลใหม่
   } catch (error) {
     console.error('Error submitting task:', error)
   }
 }
 
-// ดึงข้อมูลเมื่อ Component โหลด
-onMounted(() => {
-  fetchTasks()
-})
+// ฟังก์ชันเปิด-ปิด Accordion รายละเอียดงาน
+const toggleExpand = (id) => {
+  expandedId.value = expandedId.value === id ? null : id
+}
 
-// 5. Computed Logic สำหรับกรองข้อมูล
-const filteredTasks = computed(() => {
-  return myTasks.value.filter(task => {
-    // กรองตามคำค้นหา
-    const matchesSearch = task.name.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
-                          task.brand.toLowerCase().includes(searchQuery.value.toLowerCase())
-    
-    // กรองตามสถานะ
-    const matchesStatus = selectedStatus.value === 'all' || task.status.status === selectedStatus.value
+// ข้อมูลแบ่งกลุ่ม
+const pending = computed(() => myTasks.value.filter(t => t.status === 'pending'))
+const submitted = computed(() => myTasks.value.filter(t => t.status === 'submitted'))
+const progressPct = computed(() => myTasks.value.length > 0 ? Math.round((submitted.value.length / myTasks.value.length) * 100) : 0)
 
-    return matchesSearch && matchesStatus
+const dateStr = computed(() => {
+  return new Date().toLocaleDateString('th-TH', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   })
 })
-
-// ฟังก์ชันแปลงรูปแบบวันที่
-const formatDate = (dateString) => {
-  if (!dateString) return 'ไม่มีกำหนด'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
-}
 </script>
 
 <template>
-  <VCard class="pa-6">
-    <div class="d-flex flex-column flex-sm-row justify-space-between align-sm-center mb-6 gap-4">
+  <div class="d-flex flex-column gap-6" style="background-color: whitesmoke;padding: 20px;border-radius: 5px;">
+    <div class="d-flex align-start justify-space-between">
       <div>
-        <h2 class="text-h5 font-weight-bold text-high-emphasis mb-1">งานของฉัน</h2>
-        <p class="text-body-2 text-medium-emphasis mb-0">รายการงานทั้งหมดที่คุณต้องรับผิดชอบ</p>
+        <h1 class="text-h5 font-weight-bold" style="color: #1F2937;">รายการงานของฉัน</h1>
+        <p class="text-caption mt-1" style="color: #6B7280;">{{ dateStr }}</p>
+      </div>
+      <div class="d-flex align-center gap-3 text-caption font-weight-bold">
+        <span class="px-3 py-1" style="border-radius: 100px; background: #F0FDF4; color: #22C55E;">
+          ส่งแล้ว {{ submitted.length }}
+        </span>
+        <span class="px-3 py-1" style="border-radius: 100px; background: #FFF9E6; color: #D97706;">
+          รอดำเนินการ {{ pending.length }}
+        </span>
       </div>
     </div>
 
-    <VRow class="mb-4">
-      <VCol cols="12" md="8">
-        <VTextField
-          v-model="searchQuery"
-          placeholder="ค้นหาชื่องาน หรือ หมวดหมู่..."
-          prepend-inner-icon="tabler-search"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          style="max-width: 400px; border-radius: 8px;"
-        />
-      </VCol>
-      <VCol cols="12" md="4">
-        <VSelect
-          v-model="selectedStatus"
-          :items="statusOptions"
-          item-title="title"
-          item-value="value"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          prepend-inner-icon="tabler-filter"
-        />
-      </VCol>
-    </VRow>
-
-    <div v-if="filteredTasks.length === 0" class="d-flex flex-column align-center justify-center py-12 text-medium-emphasis">
-      <VIcon icon="tabler-clipboard-x" size="48" class="mb-4 text-disabled" />
-      <p class="text-h6 font-weight-medium mb-1">ไม่พบรายการงาน</p>
-      <p class="text-caption">ลองปรับเปลี่ยนคำค้นหา หรือเงื่อนไขการกรองใหม่</p>
+    <div class="pa-5" style="background: white; border-radius: 16px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">
+      <div class="d-flex align-center justify-space-between mb-2">
+        <span class="text-subtitle-2 font-weight-medium" style="color: #374151;">ความคืบหน้าวันนี้</span>
+        <span class="text-subtitle-2 font-weight-bold" style="color: #F5A623;">{{ progressPct }}%</span>
+      </div>
+      
+      <div style="width: 100%; height: 12px; border-radius: 100px; background: #F3F4F6; overflow: hidden;">
+        <div 
+          style="height: 100%; border-radius: 100px; transition: all 0.5s ease; background: linear-gradient(to right, #F5A623, #22C55E);"
+          :style="{ width: `${progressPct}%` }"
+        ></div>
+      </div>
+      
+      <div class="d-flex justify-space-between mt-2">
+        <span class="text-caption" style="color: #9CA3AF;">0 รายการ</span>
+        <span class="text-caption" style="color: #9CA3AF;">{{ myTasks.length }} รายการ</span>
+      </div>
     </div>
 
-    <div v-else class="d-flex flex-column gap-3 mt-4">
-      <VCard
-        v-for="item in filteredTasks"
-        :key="item.id"
-        elevation="0"
-        border
-        class="task-card d-flex align-center pa-4 transition-swing"
-        :class="item.status.status === 'submitted' ? 'bg-light-success-subtle border-success-subtle' : 'bg-light-warning-subtle border-warning-subtle'"
-        style="border-radius: 12px; cursor: pointer;"
-      >
-        <VAvatar 
-          :color="PRIORITY_COLORS[item.priority] || 'warning'" 
-          size="32" 
-          class="text-white text-caption font-weight-bold me-4 elevation-1"
+    <div v-if="myTasks.length === 0" class="pa-12 text-center" style="background: white; border-radius: 16px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">
+      <VIcon icon="tabler-circle-check" size="48" color="success" class="mb-3" />
+      <p style="color: #6B7280; margin: 0;">ไม่มีงานสำหรับวันนี้</p>
+    </div>
+
+    <div v-if="pending.length > 0">
+      <div class="d-flex align-center gap-3 mb-3">
+        <div style="width: 4px; height: 20px; border-radius: 100px; background: #F5A623;"></div>
+        <h2 class="text-subtitle-2 font-weight-bold mb-0" style="color: #374151;">รอดำเนินการ</h2>
+        <span class="px-2 py-0 text-caption font-weight-bold" style="border-radius: 100px; background: rgba(245, 166, 35, 0.15); color: #F5A623;">
+          {{ pending.length }}
+        </span>
+      </div>
+
+      <div class="d-flex flex-column gap-3">
+        <div 
+          v-for="taskItem in pending" 
+          :key="taskItem.id"
+          class="overflow-hidden"
+          style="background: white; border-radius: 16px; border: 1px solid #FDE68A; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);"
         >
-          {{ PRIORITY_LABELS[item.priority] }}
-        </VAvatar>
-        
-        <div class="flex-grow-1 overflow-hidden me-4">
-          <p class="text-subtitle-1 font-weight-bold text-truncate mb-0 text-high-emphasis" :class="item.status.status === 'submitted' ? 'text-decoration-line-through text-medium-emphasis' : ''">
-            {{ item.name }}
-          </p>
-          <div class="d-flex align-center text-caption text-medium-emphasis mt-1 gap-3">
-            <span class="d-flex align-center">
-              <VIcon icon="tabler-tag" size="14" class="me-1" />
-              {{ item.brand }}
-            </span>
-            <span class="d-flex align-center">
-              <VIcon icon="tabler-calendar-due" size="14" class="me-1" />
-              {{ formatDate(item.dueDate) }}
-            </span>
+          <div class="pa-4 d-flex align-start gap-4">
+            <div 
+              class="d-flex align-center justify-center text-white flex-shrink-0 mt-1" 
+              style="padding: 0 8px; height: 36px; border-radius: 12px; font-size: 12px; font-weight: bold;"
+              :style="{ background: PRIORITY_COLORS[taskItem.priority] || '#F5A623' }"
+            >
+              {{ PRIORITY_LABELS[taskItem.priority] || taskItem.priority }}
+            </div>
+
+            <div class="flex-grow-1" style="min-width: 0;">
+              <div class="d-flex align-start justify-space-between gap-2">
+                <div>
+                  <p class="text-subtitle-2 font-weight-bold mb-0" style="color: #1F2937;">{{ taskItem.name }}</p>
+                  <p class="text-caption mb-0" style="color: #6B7280;">{{ taskItem.reportType }} • {{ taskItem.brand }}</p>
+                </div>
+                <span class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #FEF3C7; color: #92400E;">
+                  รอดำเนินการ
+                </span>
+              </div>
+
+              <div v-if="expandedId === taskItem.id" class="mt-4 pt-3" style="border-top: 1px solid #F3F4F6;">
+                <p v-if="taskItem.description" class="text-caption mb-2" style="color: #4B5563;">{{ taskItem.description }}</p>
+                <div class="d-flex flex-wrap gap-2">
+                  <span v-for="b in taskItem.targetBrands" :key="b" class="px-2 py-1 text-caption" style="border-radius: 100px; background: #F0F4FF; color: #3B5BDB;">
+                    {{ b }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <VBtn icon variant="text" size="small" color="secondary" class="mt-1" @click="toggleExpand(taskItem.id)">
+              <VIcon :icon="expandedId === taskItem.id ? 'tabler-chevron-up' : 'tabler-chevron-down'" />
+            </VBtn>
+          </div>
+
+          <div class="px-4 pb-4 d-flex justify-end">
+            <button 
+              @click="submitTask(taskItem.id)"
+              class="d-flex align-center gap-2 px-4 py-2 text-subtitle-2 font-weight-bold"
+              style="border-radius: 12px; background: #F5A623; color: white; border: none; cursor: pointer; transition: opacity 0.2s;"
+              onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'"
+            >
+              <VIcon icon="tabler-circle-check" size="18" /> ส่งรายงาน
+            </button>
           </div>
         </div>
-
-        <div class="d-flex align-center gap-2">
-          <VChip
-            :color="item.status.status === 'submitted' ? 'success' : 'warning'"
-            size="small"
-            variant="tonal"
-            class="font-weight-medium d-none d-sm-flex"
-          >
-            {{ item.status.status === 'submitted' ? 'ส่งแล้ว' : 'รอดำเนินการ' }}
-          </VChip>
-          
-          <VBtn
-            v-if="item.status.status === 'pending'"
-            color="success"
-            size="small"
-            variant="flat"
-            @click="submitTask(item.id)"
-          >
-            <VIcon icon="tabler-check" class="me-1" size="16"/>
-            ส่งงาน
-          </VBtn>
-          <VBtn
-            v-else
-            icon
-            variant="text"
-            size="small"
-            color="secondary"
-          >
-            <VIcon icon="tabler-dots-vertical" />
-          </VBtn>
-        </div>
-      </VCard>
+      </div>
     </div>
-  </VCard>
-</template>
 
-<style scoped>
-/* เพิ่มสี Custom สำหรับ Background และ Border อ่อนๆ */
-.bg-light-success-subtle {
-  background-color: #F0FDF4 !important;
-}
-.border-success-subtle {
-  border-color: #BBF7D0 !important;
-}
-.bg-light-warning-subtle {
-  background-color: #FFF9E6 !important;
-}
-.border-warning-subtle {
-  border-color: #FDE68A !important;
-}
-.task-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-}
-</style>
+    <div v-if="submitted.length > 0">
+      <div class="d-flex align-center gap-3 mb-3">
+        <div style="width: 4px; height: 20px; border-radius: 100px; background: #22C55E;"></div>
+        <h2 class="text-subtitle-2 font-weight-bold mb-0" style="color: #374151;">ส่งแล้ว</h2>
+        <span class="px-2 py-0 text-caption font-weight-bold" style="border-radius: 100px; background: rgba(34, 197, 94, 0.15); color: #22C55E;">
+          {{ submitted.length }}
+        </span>
+      </div>
+
+      <div class="d-flex flex-column gap-3">
+        <div 
+          v-for="taskItem in submitted" 
+          :key="taskItem.id"
+          class="overflow-hidden"
+          style="background: white; border-radius: 16px; border: 1px solid #BBF7D0; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);"
+        >
+          <div class="pa-4 d-flex align-start gap-4">
+            <div 
+              class="d-flex align-center justify-center text-white flex-shrink-0 mt-1" 
+              style="padding: 0 8px; height: 36px; border-radius: 12px; font-size: 12px; font-weight: bold;"
+              :style="{ background: PRIORITY_COLORS[taskItem.priority] || '#F5A623' }"
+            >
+              {{ PRIORITY_LABELS[taskItem.priority] || taskItem.priority }}
+            </div>
+
+            <div class="flex-grow-1" style="min-width: 0;">
+              <div class="d-flex align-start justify-space-between gap-2">
+                <div>
+                  <p class="text-subtitle-2 font-weight-bold mb-0" style="color: #1F2937;">{{ taskItem.name }}</p>
+                  <p class="text-caption mb-0" style="color: #6B7280;">{{ taskItem.reportType }} • {{ taskItem.brand }}</p>
+                </div>
+                <span class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #DCFCE7; color: #166534;">
+                  ส่งแล้ว {{ taskItem.submittedAt }}
+                </span>
+              </div>
+
+              <div v-if="expandedId === taskItem.id" class="mt-4 pt-3" style="border-top: 1px solid #F3F4F6;">
+                <p v-if="taskItem.description" class="text-caption mb-2" style="color: #4B5563;">{{ taskItem.description }}</p>
+                <div class="d-flex flex-wrap gap-2">
+                  <span v-for="b in taskItem.targetBrands" :key="b" class="px-2 py-1 text-caption" style="border-radius: 100px; background: #F0F4FF; color: #3B5BDB;">
+                    {{ b }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <VBtn icon variant="text" size="small" color="secondary" class="mt-1" @click="toggleExpand(taskItem.id)">
+              <VIcon :icon="expandedId === taskItem.id ? 'tabler-chevron-up' : 'tabler-chevron-down'" />
+            </VBtn>
+          </div>
+
+          </div>
+      </div>
+    </div>
+  </div>
+</template>

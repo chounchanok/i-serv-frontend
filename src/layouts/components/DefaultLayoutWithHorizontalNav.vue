@@ -12,6 +12,7 @@ import { themeConfig } from '@themeConfig'
 // Components
 import Footer from '@/layouts/components/Footer.vue'
 import NavbarThemeSwitcher from '@/layouts/components/NavbarThemeSwitcher.vue'
+import NavBarNotifications from '@/layouts/components/NavBarNotifications.vue'
 import UserProfile from '@/layouts/components/UserProfile.vue'
 import { HorizontalNavLayout } from '@layouts'
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
@@ -69,7 +70,7 @@ console.log(userData.value.position_name);
 
       <NavbarThemeSwitcher />
       <!-- <NavbarShortcuts /> -->
-      <!-- <NavBarNotifications class="me-2" /> -->
+      <NavBarNotifications />
       <UserProfile />
     </template>
 

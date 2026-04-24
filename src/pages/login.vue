@@ -91,6 +91,7 @@ const login = async () => {
         ability.update(userAbilityRules)
         useCookie('userData').value = userData
         useCookie('accessToken').value = accessToken
+        localStorage.setItem('userData', JSON.stringify(userData))
         localStorage.setItem('accessToken', accessToken)
 
         Swal.fire({

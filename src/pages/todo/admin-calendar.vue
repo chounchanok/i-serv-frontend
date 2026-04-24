@@ -32,30 +32,44 @@ const todayStr = new Date().toISOString().split('T')[0]
 
 // --- API Calls ---
 
+// --- API Calls ---
+
 const fetchMasterData = async () => {
   try {
-    // ดึงค่าสิทธิ์ผู้ใช้จาก localStorage เพื่อส่งไป Query ใน API (เปลี่ยน Key ตามที่คุณใช้จริง)
+    // 1. ดึงข้อมูล User จาก LocalStorage (ที่เซฟไว้ตอน Login)
     const userDataString = localStorage.getItem('userData')
     const userData = userDataString ? JSON.parse(userDataString) : {}
-    const userPayload = { 
-      position_name: userData.position_name || 'SuperAdmin', 
-      user_id: userData.id 
+    
+    // 2. จัดเตรียม Payload ส่งไปให้ Backend กรองสิทธิ์
+    const userPayload = {
+      position_name: userData.position_name || 'SuperAdmin',
+      user_id: userData.id,
+      group_customer_id: userData.group_customer_id, // ส่ง Group ของตัวเองไป
+      area_manager: userData.area_manager,
+      area_supervisor: userData.area_supervisor
     }
 
-    // 1. โหลด GroupCustomer
+    // โหลด GroupCustomer (ฝั่ง Backend มี Logic กรองสิทธิ์รอไว้แล้ว)
     const groupsRes = await $api('/get_all_group_customer_user', { 
       method: 'POST', body: userPayload 
     })
+    
     if (groupsRes && groupsRes.data) {
-      GROUPS.value = groupsRes.data // [{id: 1, name: 'Group A'}, ...]
+      GROUPS.value = groupsRes.data 
     }
 
-    // 2. โหลด Account
-    const accRes = await $api('/get_all_account', { 
+    // โหลด Account (เรียก API ตัวใหม่)
+    const accRes = await $api('/get_account_by_user_position', { 
       method: 'POST', body: userPayload 
     })
+    
     if (accRes && accRes.data) {
-      ACCOUNTS.value = accRes.data // [{id: 1, name: 'Account A', group_customer_id: 1}, ...]
+      // Map ข้อมูลให้ตรงกับที่ตัวแปรฟอร์มต้องการ
+      ACCOUNTS.value = accRes.data.map(item => ({
+        id: item.account_id,
+        name: item.account ? item.account.name : 'ไม่ได้ระบุ Account',
+        group_customer_id: item.group_customer_id || userPayload.group_customer_id
+      }))
     }
 
   } catch (error) {
