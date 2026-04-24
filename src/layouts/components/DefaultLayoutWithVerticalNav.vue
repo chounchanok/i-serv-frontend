@@ -63,19 +63,11 @@ console.log(userData.value.position_name);
             icon="tabler-menu-2"
           />
         </IconBtn>
-
-        <!-- <NavSearchBar class="ms-lg-n3" /> -->
-
+        
         <VSpacer />
 
-        <!-- <NavBarI18n
-          v-if="themeConfig.app.i18n.enable && themeConfig.app.i18n.langConfig?.length"
-          :languages="themeConfig.app.i18n.langConfig"
-        /> -->
-        <NavbarThemeSwitcher />
-        <!-- <NavbarShortcuts /> -->
-        <!-- <NavBarNotifications class="me-1" /> -->
-        <NavBarNotifications />
+        <NavBarNotifications class="me-2" />
+        <NavbarThemeSwitcher class="me-2" />
         <UserProfile />
       </div>
     </template>

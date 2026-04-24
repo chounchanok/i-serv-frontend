@@ -4,10 +4,10 @@ export default [
     title: 'To-Do List',
     icon: { icon: 'tabler-list-check' },
     children: [
-      {
-        title: 'แดชบอร์ดพนักงาน',
-        to: 'todo-employee-dashboard', // **จุดสำคัญ:** ตรงนี้ต้องใส่ชื่อ Route ที่ระบบสร้างให้ (อ่านคำอธิบายด้านล่าง)
-      },
+      // {
+      //   title: 'แดชบอร์ดพนักงาน',
+      //   to: 'todo-employee-dashboard', // **จุดสำคัญ:** ตรงนี้ต้องใส่ชื่อ Route ที่ระบบสร้างให้ (อ่านคำอธิบายด้านล่าง)
+      // },
       {
         title: 'งานของฉัน',
         to: 'todo-my-tasks', // นี่คือชื่อ Route ที่จะได้จากไฟล์ my-tasks.vue

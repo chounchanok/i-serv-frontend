@@ -17,6 +17,10 @@ const isAddModalVisible = ref(false)
 const selectedDate = ref(null)
 const viewDate = ref(new Date()) 
 
+// 🌟 ตัวแปรสำหรับโหมด Edit 🌟
+const isEditing = ref(false)
+const editTaskId = ref(null)
+
 const form = ref({
   name: '',
   reportType: REPORT_TYPES[0],
@@ -30,26 +34,30 @@ const form = ref({
 
 const todayStr = new Date().toISOString().split('T')[0]
 
-// --- API Calls ---
+// 🌟 ป้องกันไม่ให้เลือกวันที่ย้อนหลังในปฏิทิน (ถ้าเป็นการ Edit) 🌟
+const minDate = computed(() => {
+  if (isEditing.value) {
+    const today = new Date()
+    return today.toISOString().split('T')[0] // 'YYYY-MM-DD'
+  }
+  return null
+})
 
 // --- API Calls ---
 
 const fetchMasterData = async () => {
   try {
-    // 1. ดึงข้อมูล User จาก LocalStorage (ที่เซฟไว้ตอน Login)
     const userDataString = localStorage.getItem('userData')
     const userData = userDataString ? JSON.parse(userDataString) : {}
     
-    // 2. จัดเตรียม Payload ส่งไปให้ Backend กรองสิทธิ์
     const userPayload = {
       position_name: userData.position_name || 'SuperAdmin',
       user_id: userData.id,
-      group_customer_id: userData.group_customer_id, // ส่ง Group ของตัวเองไป
-      area_manager: userData.area_manager,
-      area_supervisor: userData.area_supervisor
+      group_customer_id: userData.group_customer_id,
+      // area_manager: userData.area_manager,
+      // area_supervisor: userData.area_supervisor
     }
 
-    // โหลด GroupCustomer (ฝั่ง Backend มี Logic กรองสิทธิ์รอไว้แล้ว)
     const groupsRes = await $api('/get_all_group_customer_user', { 
       method: 'POST', body: userPayload 
     })
@@ -58,13 +66,11 @@ const fetchMasterData = async () => {
       GROUPS.value = groupsRes.data 
     }
 
-    // โหลด Account (เรียก API ตัวใหม่)
     const accRes = await $api('/get_account_by_user_position', { 
       method: 'POST', body: userPayload 
     })
     
     if (accRes && accRes.data) {
-      // Map ข้อมูลให้ตรงกับที่ตัวแปรฟอร์มต้องการ
       ACCOUNTS.value = accRes.data.map(item => ({
         id: item.account_id,
         name: item.account ? item.account.name : 'ไม่ได้ระบุ Account',
@@ -89,8 +95,8 @@ const fetchTasks = async () => {
       scheduledDate: t.start_date ? t.start_date.split('T')[0] : '',
       dueDate: t.end_date ? t.end_date.split('T')[0] : '',
       priority: t.priority,
-      targetGroups: t.target_groups || [], 
-      targetAccounts: t.target_accounts || [],
+      targetGroups: t.target_brands || [], // Backend map field นี้อยู่
+      targetAccounts: t.target_stores || [], // Backend map field นี้อยู่
       status: 'assigned', 
       description: t.description
     }))
@@ -101,9 +107,7 @@ const fetchTasks = async () => {
 
 const saveTask = async () => {
   try {
-    await $api('/admin/tasks', {
-      method: 'POST',
-      body: {
+    const payload = {
         name: form.value.name,
         reportType: form.value.reportType,
         priority: form.value.priority,
@@ -112,13 +116,38 @@ const saveTask = async () => {
         description: form.value.description,
         targetGroups: form.value.targetGroups,
         targetAccounts: form.value.targetAccounts
-      }
-    })
+    }
+
+    // 🌟 ถ้าเป็นโหมด Edit ให้ยิง PUT ไปที่ ID นั้น 🌟
+    if (isEditing.value && editTaskId.value) {
+      await $api(`/admin/tasks/${editTaskId.value}`, {
+        method: 'PUT',
+        body: payload
+      })
+    } else {
+      // โหมดสร้างใหม่ ยิง POST ปกติ
+      await $api('/admin/tasks', {
+        method: 'POST',
+        body: payload
+      })
+    }
 
     isAddModalVisible.value = false
     fetchTasks()
   } catch (error) {
     console.error('Error saving task:', error)
+  }
+}
+
+// 🌟 ฟังก์ชันลบงาน 🌟
+const deleteTask = async (id) => {
+  if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบงานนี้? (พนักงานจะไม่เห็นงานนี้อีก)')) {
+    try {
+      await $api(`/admin/tasks/${id}`, { method: 'DELETE' })
+      fetchTasks()
+    } catch (error) {
+      console.error('Error deleting task:', error)
+    }
   }
 }
 
@@ -160,7 +189,6 @@ const getTasksForDate = (day) => {
 
 // --- Form Group / Account Mapping Logic ---
 
-// คำนวณรายชื่อ Account ที่โชว์ เฉพาะใน Group ที่ถูกเลือกไว้ (ถ้าไม่ได้เลือก Group เลยให้แสดงทั้งหมด)
 const availableAccounts = computed(() => {
   if (form.value.targetGroups.length === 0) return ACCOUNTS.value
   return ACCOUNTS.value.filter(a => form.value.targetGroups.includes(a.group_customer_id))
@@ -170,7 +198,6 @@ const toggleGroup = (groupId) => {
   const idx = form.value.targetGroups.indexOf(groupId)
   idx > -1 ? form.value.targetGroups.splice(idx, 1) : form.value.targetGroups.push(groupId)
   
-  // รีเซ็ต Account ที่เผลอเลือกไว้ แต่ไม่ได้อยู่ใน Group แล้ว
   const validAccountIds = availableAccounts.value.map(a => a.id)
   form.value.targetAccounts = form.value.targetAccounts.filter(id => validAccountIds.includes(id))
 }
@@ -182,17 +209,38 @@ const toggleAccount = (accountId) => {
 
 const openAddModal = (date = '') => {
   const defaultDate = date || todayStr
+  isEditing.value = false
+  editTaskId.value = null
+  
   form.value = {
     name: '', reportType: REPORT_TYPES[0], priority: 1,
     targetGroups: [], targetAccounts: [], description: '',
     startDate: defaultDate, endDate: defaultDate,
   }
-  isAddModalVisible.value = false // สลับเพื่อเคลียร์ component ถ้าต้องการ
+  isAddModalVisible.value = false 
   setTimeout(() => { isAddModalVisible.value = true }, 50)
+}
+
+// 🌟 ฟังก์ชันเปิดโหมด Edit 🌟
+const openEditModal = (taskItem) => {
+  isEditing.value = true
+  editTaskId.value = taskItem.id
+  
+  form.value = {
+    name: taskItem.name, 
+    reportType: taskItem.reportType || REPORT_TYPES[0], 
+    priority: taskItem.priority || 1,
+    targetGroups: taskItem.targetGroups || [], 
+    targetAccounts: taskItem.targetAccounts || [], 
+    description: taskItem.description || '',
+    startDate: taskItem.scheduledDate, 
+    endDate: taskItem.dueDate,
+  }
+  isAddModalVisible.value = true
 }
 </script>
 
-<template>
+<template style="background-color: whitesmoke;">
   <VCard class="pa-6">
     <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-6">
       <div>
@@ -236,7 +284,7 @@ const openAddModal = (date = '') => {
                 <div class="task-dots-container mt-1">
                   <div v-for="task in getTasksForDate(day).slice(0, 2)" :key="task.id" 
                        class="task-badge" :style="{ background: PRIORITY_COLORS[task.priority] || '#F5A623' }">
-                    {{ PRIORITY_LABELS[task.priority] }} {{ task.name }}
+                    [{{ PRIORITY_LABELS[task.priority] }}] {{ task.name }}
                   </div>
                   <div v-if="getTasksForDate(day).length > 2" class="text-caption text-disabled" style="font-size: 10px;">+{{ getTasksForDate(day).length - 2 }} อื่นๆ</div>
                 </div>
@@ -261,10 +309,15 @@ const openAddModal = (date = '') => {
                 ไม่มีงานสำหรับวันนี้
               </div>
               <VCard v-else v-for="task in getTasksForDate(selectedDate.split('-')[2])" :key="task.id" border elevation="0" class="pa-3 bg-light-warning">
-                <div class="d-flex align-center gap-2 mb-1">
+                <div class="d-flex align-center justify-space-between mb-1">
                   <VChip :color="PRIORITY_COLORS[task.priority] || 'warning'" size="x-small" label class="text-white font-weight-bold">
                     {{ PRIORITY_LABELS[task.priority] || task.priority }}
                   </VChip>
+                  
+                  <div class="d-flex gap-1">
+                    <VBtn icon="tabler-pencil" size="x-small" variant="text" color="info" @click.stop="openEditModal(task)" />
+                    <VBtn icon="tabler-trash" size="x-small" variant="text" color="error" @click.stop="deleteTask(task.id)" />
+                  </div>
                 </div>
                 <div class="text-subtitle-2 font-weight-bold">{{ task.name }}</div>
                 <div class="text-caption text-medium-emphasis">{{ task.reportType }}</div>
@@ -280,16 +333,18 @@ const openAddModal = (date = '') => {
     </VRow>
 
     <VCard border elevation="0" class="mt-6" style="border-radius: 16px;">
-      <VCardTitle class="pa-4 font-weight-bold text-subtitle-1">รายการงานทั้งหมด</VCardTitle>
+      <VCardTitle class="pa-4 font-weight-bold text-subtitle-1 border-bottom">รายการงานทั้งหมด</VCardTitle>
       <VDataTable :items="tasks" :headers="[
-        { title: 'Priority', key: 'priority' },
         { title: 'ชื่องาน', key: 'name' },
         { title: 'ประเภท', key: 'reportType' },
+        { title: 'ความสำคัญ', key: 'priority' },
         { title: 'วันที่เริ่มต้น', key: 'scheduledDate' },
-        { title: 'วันที่สิ้นสุด', key: 'dueDate' }
+        { title: 'วันที่สิ้นสุด', key: 'dueDate' },
+        { title: 'จัดการ', key: 'actions', align: 'center', sortable: false }
       ]" class="text-no-wrap">
+        
         <template #item.priority="{ item }">
-          <VChip :color="PRIORITY_COLORS[item.priority] || 'warning'" size="small" class="text-white font-weight-bold" label>
+          <VChip :color="PRIORITY_COLORS[item.priority] || 'warning'" size="small" class="font-weight-bold" label>
             {{ PRIORITY_LABELS[item.priority] || item.priority }}
           </VChip>
         </template>
@@ -299,19 +354,32 @@ const openAddModal = (date = '') => {
         <template #item.dueDate="{ item }">
           {{ item.dueDate || 'ไม่ระบุ' }}
         </template>
+
+        <template #item.actions="{ item }">
+          <div class="d-flex align-center justify-center gap-1">
+            <VBtn icon variant="text" size="small" color="info" @click="openEditModal(item)">
+              <VIcon icon="tabler-pencil" />
+            </VBtn>
+            <VBtn icon variant="text" size="small" color="error" @click="deleteTask(item.id)">
+              <VIcon icon="tabler-trash" />
+            </VBtn>
+          </div>
+        </template>
+
       </VDataTable>
     </VCard>
 
     <VDialog v-model="isAddModalVisible" max-width="650" scrollable>
       <VCard>
         <VToolbar color="primary" class="px-2">
-          <VToolbarTitle class="text-white">เพิ่มงานใหม่</VToolbarTitle>
+          <VToolbarTitle class="text-white">{{ isEditing ? 'แก้ไขงาน' : 'เพิ่มงานใหม่' }}</VToolbarTitle>
           <VBtn icon="tabler-x" color="white" @click="isAddModalVisible = false" />
         </VToolbar>
         <VCardText class="pa-6">
           <VRow>
-            <VCol cols="12" sm="6"><AppTextField v-model="form.startDate" label="วันเริ่มต้น" type="date" /></VCol>
-            <VCol cols="12" sm="6"><AppTextField v-model="form.endDate" label="วันสิ้นสุด" type="date" /></VCol>
+            <VCol cols="12" sm="6"><AppTextField v-model="form.startDate" label="วันเริ่มต้น" type="date" :min="minDate" /></VCol>
+            <VCol cols="12" sm="6"><AppTextField v-model="form.endDate" label="วันสิ้นสุด" type="date" :min="form.startDate || minDate" /></VCol>
+            
             <VCol cols="12"><AppTextField v-model="form.name" label="ชื่องาน / รายงาน" placeholder="เช่น รายงานยอดขายประจำวัน" /></VCol>
             <VCol cols="12" sm="6"><AppSelect v-model="form.reportType" :items="REPORT_TYPES" label="ประเภทรายงาน" /></VCol>
             <VCol cols="12" sm="6">
@@ -357,7 +425,9 @@ const openAddModal = (date = '') => {
         <VCardActions class="pa-4">
           <VSpacer />
           <VBtn variant="tonal" color="secondary" @click="isAddModalVisible = false">ยกเลิก</VBtn>
-          <VBtn color="warning" @click="saveTask">บันทึกงาน</VBtn>
+          <VBtn color="warning" @click="saveTask" variant="elevated">
+            {{ isEditing ? 'บันทึกการแก้ไข' : 'บันทึกงาน' }}
+          </VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
@@ -373,4 +443,5 @@ const openAddModal = (date = '') => {
 .task-badge { font-size: 9px; color: white; padding: 2px 4px; border-radius: 4px; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bg-light-warning { background-color: #fff9e6 !important; }
 .bg-light-primary { background-color: #f0f4ff !important; }
+.border-bottom { border-bottom: 1px solid rgba(0,0,0,0.05); }
 </style>

@@ -277,7 +277,7 @@ const handleExport = () => {
 
     <VDialog v-model="isModalVisible" max-width="550" scrollable>
       <VCard v-if="selectedEmployee">
-        <VToolbar color="primary" class="px-2">
+        <VToolbar style="background: rgb(11, 20, 100);" class="px-2">
           <VToolbarTitle class="text-white">{{ selectedEmployee.employee.name }}</VToolbarTitle>
           <VBtn icon="tabler-x" color="white" @click="isModalVisible = false" />
         </VToolbar>

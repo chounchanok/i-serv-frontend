@@ -67,10 +67,9 @@ console.log(userData.value.position_name);
         v-if="themeConfig.app.i18n.enable && themeConfig.app.i18n.langConfig?.length"
         :languages="themeConfig.app.i18n.langConfig"
       /> -->
-
-      <NavbarThemeSwitcher />
-      <!-- <NavbarShortcuts /> -->
-      <NavBarNotifications />
+      
+      <NavBarNotifications class="me-2" />
+      <NavbarThemeSwitcher class="me-2" />
       <UserProfile />
     </template>
 
