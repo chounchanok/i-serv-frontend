@@ -5,13 +5,21 @@ import { $api } from '@/utils/api'
 // --- State Management ---
 const rawSummaries = ref([])
 const filterStore = ref('all')
+const filterAccounts = ref([])
 const selectedEmployee = ref(null)
 const selectedEmployeeTasks = ref([])
 const isModalVisible = ref(false)
 
-// 🌟 เพิ่ม PRIORITY_LABELS เข้ามาเพื่อแปลงรหัสเป็นคำว่า สูง, กลาง, น้อย 🌟
 const PRIORITY_LABELS = { 1: 'สูง', 2: 'กลาง', 3: 'น้อย', 'H': 'สูง', 'M': 'กลาง', 'L': 'น้อย' }
 const PRIORITY_COLORS = { 1: '#EF4444', 2: '#F5A623', 3: '#3B82F6', 'H': '#EF4444', 'M': '#F5A623', 'L': '#3B82F6' }
+
+// 🌟 สร้างวันที่ YYYY-MM-DD แบบไม่เพี้ยน Timezone 🌟
+const getTodayStr = () => {
+  const d = new Date()
+  const tzOffset = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - tzOffset).toISOString().split('T')[0]
+}
+const todayStr = getTodayStr()
 
 // 1. ดึงข้อมูลภาพรวมของทีม
 const fetchTeamSummary = async () => {
@@ -26,6 +34,8 @@ const fetchTeamSummary = async () => {
         group_customer_id: userData.group_customer_id
       }
     })
+    
+    // กรองเอาเฉพาะข้อมูลสรุปที่ Backend ส่งมาให้
     rawSummaries.value = response.summaries || []
   } catch (error) {
     console.error('Error fetching team summary:', error)
@@ -33,8 +43,6 @@ const fetchTeamSummary = async () => {
 }
 
 // 2. ดึงข้อมูล Account มาทำ Filter Dropdown
-const filterAccounts = ref([])
-
 const fetchFilterAccounts = async () => {
   try {
     const userDataString = localStorage.getItem('userData')
@@ -49,7 +57,6 @@ const fetchFilterAccounts = async () => {
       }
     })
     if (res && res.status === 'success') {
-      // เอาชื่อ Account มารวมกับคำว่า 'all'
       filterAccounts.value = ['all', ...new Set(res.data.map(acc => acc.account.name))]
     }
   } catch (error) {
@@ -62,16 +69,23 @@ const openDetail = async (summary) => {
   selectedEmployee.value = summary
   try {
     const tasks = await $api(`/admin/employee-tasks/${summary.employee.id}`)
-    selectedEmployeeTasks.value = tasks.map(item => ({
-      status: { status: item.status, submittedAt: item.submitted_at },
-      task: { 
-        id: item.task_detail?.id, 
-        name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน', 
-        reportType: item.task_detail?.report_type || 'General', 
-        brand: item.task_detail?.target_brands ? String(item.task_detail.target_brands) : 'ไม่ระบุ', 
-        priority: item.task_detail?.priority || 'M' 
-      }
-    }))
+    
+    // 🌟 กรองเอาเฉพาะงานของ "วันนี้" เท่านั้นมาโชว์ใน Modal 🌟
+    selectedEmployeeTasks.value = tasks
+      .filter(item => {
+        const taskDate = item.task_date ? String(item.task_date).split('T')[0] : ''
+        return taskDate === todayStr
+      })
+      .map(item => ({
+        status: { status: item.status, submittedAt: item.submitted_at },
+        task: { 
+          id: item.task_detail?.id, 
+          name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน', 
+          reportType: item.task_detail?.report_type || 'General', 
+          brand: item.task_detail?.target_brands ? String(item.task_detail.target_brands) : 'ไม่ระบุ', 
+          priority: item.task_detail?.priority || 'M' 
+        }
+      }))
     isModalVisible.value = true
   } catch (error) {
     console.error('Error fetching employee tasks details:', error)
@@ -80,19 +94,18 @@ const openDetail = async (summary) => {
 
 onMounted(() => {
   fetchTeamSummary()
-  fetchFilterAccounts() // เรียกใช้ฟังก์ชันดึง Account ตรงนี้
+  fetchFilterAccounts()
 })
 
 // --- Logic & Computed ---
 const stores = computed(() => {
-  const allStores = rawSummaries.value.map(s => s.employee.store).filter(Boolean)
-  return ['all', ...new Set(allStores)]
+  return filterAccounts.value.length > 0 ? filterAccounts.value : ['all']
 })
 
 const filteredSummaries = computed(() => {
   return filterStore.value === 'all' 
     ? rawSummaries.value 
-    : rawSummaries.value.filter(s => s.employee.store === filterStore.value)
+    : rawSummaries.value.filter(s => s.employee.store === filterStore.value) // อนาคตถ้า Query Store มาได้ก็ใช้ตัวนี้กรอง
 })
 
 const stats = computed(() => {
@@ -103,8 +116,10 @@ const stats = computed(() => {
   return { total, fullySubmitted, avgPct }
 })
 
-const todayStr = new Date().toLocaleDateString('th-TH', {
-  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+const displayDateStr = computed(() => {
+  return new Date().toLocaleDateString('th-TH', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  })
 })
 
 // --- Chart Configuration (Donut Chart) ---
@@ -159,7 +174,7 @@ const handleExport = () => {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `team-report-${new Date().toISOString().split('T')[0]}.csv`
+  link.download = `team-report-${todayStr}.csv`
   link.click()
 }
 </script>
@@ -169,14 +184,14 @@ const handleExport = () => {
     <div class="d-flex flex-wrap align-center justify-space-between gap-4 mb-6">
       <div>
         <h2 class="text-h5 font-weight-bold mb-1">ภาพรวมทีม (Supervisor)</h2>
-        <p class="text-caption text-medium-emphasis mb-0">{{ todayStr }}</p>
+        <p class="text-caption text-medium-emphasis mb-0">{{ displayDateStr }}</p>
       </div>
       <div class="d-flex align-center gap-3">
         <VSelect
           v-model="filterStore"
           :items="stores"
           density="compact"
-          label="กรองข้อมูล"
+          label="กรองข้อมูล (Account)"
           hide-details
           style="width: 200px;"
         />
@@ -300,7 +315,7 @@ const handleExport = () => {
 
           <h4 class="text-subtitle-2 mb-3 text-uppercase">รายการรายงานวันนี้</h4>
           <div v-if="selectedEmployeeTasks.length === 0" class="text-center py-6 text-medium-emphasis">
-            ไม่มีรายการงาน
+            ไม่มีรายการงานของวันนี้
           </div>
           <div v-else class="d-flex flex-column gap-3">
             <VCard 

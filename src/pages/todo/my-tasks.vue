@@ -29,7 +29,10 @@ const fetchTasks = async () => {
       description: item.task_detail?.description || '',
       targetBrands: item.task_detail?.target_brands ? [String(item.task_detail.target_brands)] : [],
       status: item.status,
-      // แปลงเวลาที่ส่งงานให้เป็น HH:mm (ถ้ามี)
+      
+      // 🌟 หัวใจสำคัญ: ดึง task_date แล้วตัดตัวอักษร T และเวลาทิ้ง ให้เหลือแค่ 'YYYY-MM-DD' เพื่อใช้เทียบตรงๆ
+      taskDate: item.task_date ? String(item.task_date).split('T')[0] : '', 
+
       submittedAt: item.submitted_at 
         ? new Date(item.submitted_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
         : ''
@@ -43,7 +46,6 @@ onMounted(() => {
   fetchTasks()
 })
 
-// ฟังก์ชันกดส่งงาน
 const submitTask = async (assignmentId) => {
   try {
     const userDataString = localStorage.getItem('userData')
@@ -54,21 +56,35 @@ const submitTask = async (assignmentId) => {
       body: { userId: userData.id }
     })
     
-    fetchTasks() // รีเฟรชข้อมูลใหม่
+    fetchTasks() 
   } catch (error) {
     console.error('Error submitting task:', error)
   }
 }
 
-// ฟังก์ชันเปิด-ปิด Accordion รายละเอียดงาน
 const toggleExpand = (id) => {
   expandedId.value = expandedId.value === id ? null : id
 }
 
-// ข้อมูลแบ่งกลุ่ม
-const pending = computed(() => myTasks.value.filter(t => t.status === 'pending'))
-const submitted = computed(() => myTasks.value.filter(t => t.status === 'submitted'))
-const progressPct = computed(() => myTasks.value.length > 0 ? Math.round((submitted.value.length / myTasks.value.length) * 100) : 0)
+// 🌟 สร้างวันที่ YYYY-MM-DD แบบไม่เพี้ยน Timezone 🌟
+const getDateStr = (offsetDays = 0) => {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  const tzOffset = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - tzOffset).toISOString().split('T')[0]
+}
+
+const todayStr = getDateStr(0)
+const tomorrowStr = getDateStr(1)
+
+// 🌟 กรองให้แสดงเฉพาะงานที่ taskDate ตรงกับ "วันนี้" หรือ "พรุ่งนี้" เป๊ะๆ 🌟
+const todayPending = computed(() => myTasks.value.filter(t => t.status === 'pending' && t.taskDate === todayStr))
+const todaySubmitted = computed(() => myTasks.value.filter(t => t.status === 'submitted' && t.taskDate === todayStr))
+const tomorrowTasks = computed(() => myTasks.value.filter(t => t.taskDate === tomorrowStr))
+
+// สถิติความคืบหน้าของ "วันนี้" เท่านั้น
+const totalTodayTasks = computed(() => todayPending.value.length + todaySubmitted.value.length)
+const progressPct = computed(() => totalTodayTasks.value > 0 ? Math.round((todaySubmitted.value.length / totalTodayTasks.value) * 100) : 0)
 
 const dateStr = computed(() => {
   return new Date().toLocaleDateString('th-TH', {
@@ -78,7 +94,8 @@ const dateStr = computed(() => {
 </script>
 
 <template>
-  <div class="d-flex flex-column gap-6" style="background-color: whitesmoke;padding: 20px;border-radius: 5px;">
+  <div class="d-flex flex-column gap-6" style="background-color: whitesmoke; padding: 20px; border-radius: 5px;">
+    
     <div class="d-flex align-start justify-space-between">
       <div>
         <h1 class="text-h5 font-weight-bold" style="color: #1F2937;">รายการงานของฉัน</h1>
@@ -86,10 +103,10 @@ const dateStr = computed(() => {
       </div>
       <div class="d-flex align-center gap-3 text-caption font-weight-bold">
         <span class="px-3 py-1" style="border-radius: 100px; background: #F0FDF4; color: #22C55E;">
-          ส่งแล้ว {{ submitted.length }}
+          ส่งแล้ว {{ todaySubmitted.length }}
         </span>
         <span class="px-3 py-1" style="border-radius: 100px; background: #FFF9E6; color: #D97706;">
-          รอดำเนินการ {{ pending.length }}
+          รอดำเนินการ {{ todayPending.length }}
         </span>
       </div>
     </div>
@@ -109,27 +126,27 @@ const dateStr = computed(() => {
       
       <div class="d-flex justify-space-between mt-2">
         <span class="text-caption" style="color: #9CA3AF;">0 รายการ</span>
-        <span class="text-caption" style="color: #9CA3AF;">{{ myTasks.length }} รายการ</span>
+        <span class="text-caption" style="color: #9CA3AF;">{{ totalTodayTasks }} รายการ</span>
       </div>
     </div>
 
-    <div v-if="myTasks.length === 0" class="pa-12 text-center" style="background: white; border-radius: 16px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">
+    <div v-if="totalTodayTasks === 0" class="pa-12 text-center" style="background: white; border-radius: 16px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">
       <VIcon icon="tabler-circle-check" size="48" color="success" class="mb-3" />
       <p style="color: #6B7280; margin: 0;">ไม่มีงานสำหรับวันนี้</p>
     </div>
 
-    <div v-if="pending.length > 0">
+    <div v-if="todayPending.length > 0">
       <div class="d-flex align-center gap-3 mb-3">
         <div style="width: 4px; height: 20px; border-radius: 100px; background: #F5A623;"></div>
-        <h2 class="text-subtitle-2 font-weight-bold mb-0" style="color: #374151;">รอดำเนินการ</h2>
+        <h2 class="text-subtitle-2 font-weight-bold mb-0" style="color: #374151;">รอดำเนินการ (วันนี้)</h2>
         <span class="px-2 py-0 text-caption font-weight-bold" style="border-radius: 100px; background: rgba(245, 166, 35, 0.15); color: #F5A623;">
-          {{ pending.length }}
+          {{ todayPending.length }}
         </span>
       </div>
 
       <div class="d-flex flex-column gap-3">
         <div 
-          v-for="taskItem in pending" 
+          v-for="taskItem in todayPending" 
           :key="taskItem.id"
           class="overflow-hidden"
           style="background: white; border-radius: 16px; border: 1px solid #FDE68A; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);"
@@ -183,18 +200,18 @@ const dateStr = computed(() => {
       </div>
     </div>
 
-    <div v-if="submitted.length > 0">
-      <div class="d-flex align-center gap-3 mb-3">
+    <div v-if="todaySubmitted.length > 0">
+      <div class="d-flex align-center gap-3 mb-3 mt-4">
         <div style="width: 4px; height: 20px; border-radius: 100px; background: #22C55E;"></div>
-        <h2 class="text-subtitle-2 font-weight-bold mb-0" style="color: #374151;">ส่งแล้ว</h2>
+        <h2 class="text-subtitle-2 font-weight-bold mb-0" style="color: #374151;">ส่งแล้ว (วันนี้)</h2>
         <span class="px-2 py-0 text-caption font-weight-bold" style="border-radius: 100px; background: rgba(34, 197, 94, 0.15); color: #22C55E;">
-          {{ submitted.length }}
+          {{ todaySubmitted.length }}
         </span>
       </div>
 
       <div class="d-flex flex-column gap-3">
         <div 
-          v-for="taskItem in submitted" 
+          v-for="taskItem in todaySubmitted" 
           :key="taskItem.id"
           class="overflow-hidden"
           style="background: white; border-radius: 16px; border: 1px solid #BBF7D0; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);"
@@ -233,9 +250,50 @@ const dateStr = computed(() => {
               <VIcon :icon="expandedId === taskItem.id ? 'tabler-chevron-up' : 'tabler-chevron-down'" />
             </VBtn>
           </div>
-
-          </div>
+        </div>
       </div>
     </div>
+
+    <div v-if="tomorrowTasks.length > 0" class="mt-4">
+      <div class="d-flex align-center gap-3 mb-3">
+        <div style="width: 4px; height: 20px; border-radius: 100px; background: #3B82F6;"></div>
+        <h2 class="text-subtitle-2 font-weight-bold mb-0" style="color: #374151;">งานในวันพรุ่งนี้</h2>
+        <span class="px-2 py-0 text-caption font-weight-bold" style="border-radius: 100px; background: rgba(59, 130, 246, 0.15); color: #3B82F6;">
+          {{ tomorrowTasks.length }}
+        </span>
+      </div>
+
+      <div class="d-flex flex-column gap-3 opacity-80">
+        <div 
+          v-for="taskItem in tomorrowTasks" 
+          :key="'tomorrow-'+taskItem.id"
+          class="overflow-hidden"
+          style="background: #F8FAFC; border-radius: 16px; border: 1px dashed #CBD5E1;"
+        >
+          <div class="pa-4 d-flex align-start gap-4">
+            <div 
+              class="d-flex align-center justify-center text-white flex-shrink-0 mt-1" 
+              style="padding: 0 8px; height: 36px; border-radius: 12px; font-size: 12px; font-weight: bold;"
+              :style="{ background: PRIORITY_COLORS[taskItem.priority] || '#F5A623' }"
+            >
+              {{ PRIORITY_LABELS[taskItem.priority] || taskItem.priority }}
+            </div>
+
+            <div class="flex-grow-1" style="min-width: 0;">
+              <div class="d-flex align-start justify-space-between gap-2">
+                <div>
+                  <p class="text-subtitle-2 font-weight-bold mb-0" style="color: #4B5563;">{{ taskItem.name }}</p>
+                  <p class="text-caption mb-0" style="color: #9CA3AF;">{{ taskItem.reportType }} • {{ taskItem.brand }}</p>
+                </div>
+                <span class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #E2E8F0; color: #475569;">
+                  รอทำพรุ่งนี้
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>

@@ -5,7 +5,16 @@ import { $api } from '@/utils/api'
 const isModalVisible = ref(false)
 const pendingTasks = ref([])
 
-// ฟังก์ชันดึงข้อมูล API
+const PRIORITY_LABELS = { 1: 'สูง', 2: 'กลาง', 3: 'น้อย', 'H': 'สูง', 'M': 'กลาง', 'L': 'น้อย' }
+const PRIORITY_COLORS = { 1: '#EF4444', 2: '#F5A623', 3: '#3B82F6', 'H': '#EF4444', 'M': '#F5A623', 'L': '#3B82F6' }
+
+// 🌟 ฟังก์ชันหาวันที่ปัจจุบัน (YYYY-MM-DD) โดยไม่เพี้ยน Timezone 🌟
+const getTodayStr = () => {
+  const d = new Date()
+  const tzOffset = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - tzOffset).toISOString().split('T')[0]
+}
+
 const fetchNotifications = async () => {
   try {
     const userDataString = localStorage.getItem('userData')
@@ -14,17 +23,35 @@ const fetchNotifications = async () => {
     if (!userData || !userData.id) return
 
     const response = await $api(`/employee/my-tasks/${userData.id}`)
+    const todayStr = getTodayStr()
     
-    // กรองเอาเฉพาะงานที่ 'pending' (รอดำเนินการ)
-    pendingTasks.value = response
-      .filter(item => item.status === 'pending')
-      .map(item => ({
-        id: item.id,
-        name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน',
-        brand: item.task_detail?.target_brands ? String(item.task_detail.target_brands) : 'ทั่วไป',
-        reportType: item.task_detail?.report_type || 'General',
-        priority: item.task_detail?.priority || '2' // default เป็น 2 (ปานกลาง)
-      }))
+    // 1. กรองเอาเฉพาะงานที่ 'pending' และ task_date ต้องเป็น "วันนี้"
+    const todayPending = response.filter(item => {
+      const taskDate = item.task_date ? String(item.task_date).split('T')[0] : ''
+      return item.status === 'pending' && taskDate === todayStr
+    })
+
+    // 2. ป้องกันข้อมูลซ้ำ (กรณี Backend บังเอิญส่งมาซ้ำ) โดยยึดจากชื่อ Task 
+    const uniqueTasks = []
+    const seenNames = new Set()
+
+    todayPending.forEach(item => {
+      const taskName = item.task_detail?.name || 'ไม่ได้ระบุชื่องาน'
+      if (!seenNames.has(taskName)) {
+        seenNames.add(taskName)
+        uniqueTasks.push({
+          id: item.id,
+          name: taskName,
+          brand: item.task_detail?.target_brands ? String(item.task_detail.target_brands) : 'ทั่วไป',
+          reportType: item.task_detail?.report_type || 'General',
+          priority: item.task_detail?.priority || 2 
+        })
+      }
+    })
+
+    // 3. กำหนดค่าลงตัวแปร
+    pendingTasks.value = uniqueTasks
+
   } catch (error) {
     console.error('Error fetching notifications:', error)
   }
@@ -34,7 +61,6 @@ onMounted(() => {
   fetchNotifications()
 })
 
-// คำนวณวันที่และเวลาปัจจุบัน (สำหรับ Header)
 const currentDateTime = computed(() => {
   const now = new Date()
   const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
@@ -86,10 +112,13 @@ const currentDateTime = computed(() => {
               v-for="task in pendingTasks" 
               :key="task.id" 
               class="d-flex align-center gap-3 pa-3 rounded-lg" 
-              style="background: #FFF9E6; border: 1px solid #F5A623;"
+              style="background: #FFF9E6; border: 1px solid #FDE68A;"
             >
-              <div class="rounded-circle d-flex align-center justify-center text-white font-weight-bold flex-shrink-0" style="background: #F5A623; width: 28px; height: 28px; font-size: 12px;">
-                {{ task.priority }}
+              <div 
+                class="rounded-circle d-flex align-center justify-center text-white font-weight-bold flex-shrink-0" 
+                :style="{ background: PRIORITY_COLORS[task.priority] || '#F5A623', width: '32px', height: '32px', fontSize: '11px' }"
+              >
+                {{ PRIORITY_LABELS[task.priority] || task.priority }}
               </div>
               
               <div class="flex-grow-1 overflow-hidden">
