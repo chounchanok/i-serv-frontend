@@ -23,7 +23,6 @@ const fetchTasks = async () => {
     myTasks.value = response.map(item => ({
       id: item.id,
       name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน',
-      brand: item.task_detail?.target_brands ? `Group ID: ${item.task_detail.target_brands}` : 'ทั่วไป',
       reportType: item.task_detail?.report_type || 'General',
       priority: item.task_detail?.priority || 'M',
       description: item.task_detail?.description || '',
@@ -152,19 +151,11 @@ const dateStr = computed(() => {
           style="background: white; border-radius: 16px; border: 1px solid #FDE68A; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);"
         >
           <div class="pa-4 d-flex align-start gap-4">
-            <div 
-              class="d-flex align-center justify-center text-white flex-shrink-0 mt-1" 
-              style="padding: 0 8px; height: 36px; border-radius: 12px; font-size: 12px; font-weight: bold;"
-              :style="{ background: PRIORITY_COLORS[taskItem.priority] || '#F5A623' }"
-            >
-              {{ PRIORITY_LABELS[taskItem.priority] || taskItem.priority }}
-            </div>
-
             <div class="flex-grow-1" style="min-width: 0;">
               <div class="d-flex align-start justify-space-between gap-2">
                 <div>
                   <p class="text-subtitle-2 font-weight-bold mb-0" style="color: #1F2937;">{{ taskItem.name }}</p>
-                  <p class="text-caption mb-0" style="color: #6B7280;">{{ taskItem.reportType }} • {{ taskItem.brand }}</p>
+                  <p class="text-caption mb-0" style="color: #6B7280;">รายงาน {{ taskItem.reportType }}</p>
                 </div>
                 <span class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #FEF3C7; color: #92400E;">
                   รอดำเนินการ
@@ -172,12 +163,7 @@ const dateStr = computed(() => {
               </div>
 
               <div v-if="expandedId === taskItem.id" class="mt-4 pt-3" style="border-top: 1px solid #F3F4F6;">
-                <p v-if="taskItem.description" class="text-caption mb-2" style="color: #4B5563;">{{ taskItem.description }}</p>
-                <div class="d-flex flex-wrap gap-2">
-                  <span v-for="b in taskItem.targetBrands" :key="b" class="px-2 py-1 text-caption" style="border-radius: 100px; background: #F0F4FF; color: #3B5BDB;">
-                    {{ b }}
-                  </span>
-                </div>
+                <p v-if="taskItem.description" class="text-caption mb-2" style="color: #4B5563;">รายละเอียดเพิ่มเติม: {{ taskItem.description }}</p>
               </div>
             </div>
 
@@ -186,7 +172,7 @@ const dateStr = computed(() => {
             </VBtn>
           </div>
 
-          <div class="px-4 pb-4 d-flex justify-end">
+          <!-- <div class="px-4 pb-4 d-flex justify-end">
             <button 
               @click="submitTask(taskItem.id)"
               class="d-flex align-center gap-2 px-4 py-2 text-subtitle-2 font-weight-bold"
@@ -195,7 +181,7 @@ const dateStr = computed(() => {
             >
               <VIcon icon="tabler-circle-check" size="18" /> ส่งรายงาน
             </button>
-          </div>
+          </div> -->
         </div>
       </div>
     </div>
@@ -217,19 +203,11 @@ const dateStr = computed(() => {
           style="background: white; border-radius: 16px; border: 1px solid #BBF7D0; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);"
         >
           <div class="pa-4 d-flex align-start gap-4">
-            <div 
-              class="d-flex align-center justify-center text-white flex-shrink-0 mt-1" 
-              style="padding: 0 8px; height: 36px; border-radius: 12px; font-size: 12px; font-weight: bold;"
-              :style="{ background: PRIORITY_COLORS[taskItem.priority] || '#F5A623' }"
-            >
-              {{ PRIORITY_LABELS[taskItem.priority] || taskItem.priority }}
-            </div>
-
             <div class="flex-grow-1" style="min-width: 0;">
               <div class="d-flex align-start justify-space-between gap-2">
                 <div>
                   <p class="text-subtitle-2 font-weight-bold mb-0" style="color: #1F2937;">{{ taskItem.name }}</p>
-                  <p class="text-caption mb-0" style="color: #6B7280;">{{ taskItem.reportType }} • {{ taskItem.brand }}</p>
+                  <p class="text-caption mb-0" style="color: #6B7280;">รายงาน {{ taskItem.reportType }}</p>
                 </div>
                 <span class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #DCFCE7; color: #166534;">
                   ส่งแล้ว {{ taskItem.submittedAt }}
@@ -237,12 +215,7 @@ const dateStr = computed(() => {
               </div>
 
               <div v-if="expandedId === taskItem.id" class="mt-4 pt-3" style="border-top: 1px solid #F3F4F6;">
-                <p v-if="taskItem.description" class="text-caption mb-2" style="color: #4B5563;">{{ taskItem.description }}</p>
-                <div class="d-flex flex-wrap gap-2">
-                  <span v-for="b in taskItem.targetBrands" :key="b" class="px-2 py-1 text-caption" style="border-radius: 100px; background: #F0F4FF; color: #3B5BDB;">
-                    {{ b }}
-                  </span>
-                </div>
+                <p v-if="taskItem.description" class="text-caption mb-2" style="color: #4B5563;">รายละเอียดเพิ่มเติม: {{ taskItem.description }}</p>
               </div>
             </div>
 
@@ -271,19 +244,11 @@ const dateStr = computed(() => {
           style="background: #F8FAFC; border-radius: 16px; border: 1px dashed #CBD5E1;"
         >
           <div class="pa-4 d-flex align-start gap-4">
-            <div 
-              class="d-flex align-center justify-center text-white flex-shrink-0 mt-1" 
-              style="padding: 0 8px; height: 36px; border-radius: 12px; font-size: 12px; font-weight: bold;"
-              :style="{ background: PRIORITY_COLORS[taskItem.priority] || '#F5A623' }"
-            >
-              {{ PRIORITY_LABELS[taskItem.priority] || taskItem.priority }}
-            </div>
-
             <div class="flex-grow-1" style="min-width: 0;">
               <div class="d-flex align-start justify-space-between gap-2">
                 <div>
                   <p class="text-subtitle-2 font-weight-bold mb-0" style="color: #4B5563;">{{ taskItem.name }}</p>
-                  <p class="text-caption mb-0" style="color: #9CA3AF;">{{ taskItem.reportType }} • {{ taskItem.brand }}</p>
+                  <p class="text-caption mb-0" style="color: #9CA3AF;">รายงาน {{ taskItem.reportType }}</p>
                 </div>
                 <span class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #E2E8F0; color: #475569;">
                   รอทำพรุ่งนี้

@@ -21,22 +21,29 @@ const getTodayStr = () => {
 }
 const todayStr = getTodayStr()
 
-// 1. ดึงข้อมูลภาพรวมของทีม
+// ✅ ปรับฟังก์ชัน fetchTeamSummary ให้รองรับการ Filter ด้วย
 const fetchTeamSummary = async () => {
   try {
     const userDataString = localStorage.getItem('userData')
     const userData = userDataString ? JSON.parse(userDataString) : {}
 
-    const response = await $api('/admin/team-summary', {
-      params: {
-        userId: userData.id,
-        position_name: userData.position_name,
-        group_customer_id: userData.group_customer_id
-      }
-    })
+    // เตรียม Params
+    const params = {
+      userId: userData.id,
+      position_name: userData.position_name,
+      group_customer_id: userData.group_customer_id
+    }
+
+    // ถ้าไม่ได้เลือก All ให้ส่ง account_name ไปให้ Backend กรอง
+    if (filterStore.value !== 'all') {
+      params.account_name = filterStore.value
+    }
+
+    const response = await $api('/admin/team-summary', { params })
     
-    // กรองเอาเฉพาะข้อมูลสรุปที่ Backend ส่งมาให้
     rawSummaries.value = response.summaries || []
+
+    // ไม่ต้องดึง filterAccounts จากที่นี่แล้ว เพราะเรามี fetchFilterAccounts แยกต่างหากอยู่แล้ว
   } catch (error) {
     console.error('Error fetching team summary:', error)
   }
@@ -103,9 +110,7 @@ const stores = computed(() => {
 })
 
 const filteredSummaries = computed(() => {
-  return filterStore.value === 'all' 
-    ? rawSummaries.value 
-    : rawSummaries.value.filter(s => s.employee.store === filterStore.value) // อนาคตถ้า Query Store มาได้ก็ใช้ตัวนี้กรอง
+  return rawSummaries.value
 })
 
 const stats = computed(() => {
@@ -164,12 +169,30 @@ const chartOptions = computed(() => ({
 
 // --- Export CSV ---
 const handleExport = () => {
-  const headers = ['ชื่อพนักงาน', 'ร้านค้า/แอคเคาน์', 'งานทั้งหมด', 'ส่งแล้ว', 'รอส่ง', '% สำเร็จ']
+  // 1. เพิ่ม Header ใหม่ 2 คอลัมน์
+  const headers = ['ชื่อพนักงาน', 'ร้านค้า/แอคเคาน์', 'งานทั้งหมด', 'ส่งแล้ว', 'รอส่ง', '% สำเร็จ', 'รายงานที่ทำแล้ว', 'รายงานที่ยังไม่ได้ทำ']
+  
+  const escapeCSV = (value) => {
+    if (value === null || value === undefined) return '""'
+    const stringValue = String(value)
+    if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
+      return `"${stringValue.replace(/"/g, '""')}"`
+    }
+    return stringValue
+  }
+
   const rows = filteredSummaries.value.map(s => [
-    s.employee.name, s.employee.store, s.total, s.submitted, s.pending, `${s.pct}%`
+    escapeCSV(s.employee.name),
+    escapeCSV(s.employee.store),
+    s.total,
+    s.submitted,
+    s.pending,
+    `${s.pct}%`,
+    escapeCSV(s.submittedList), // 👈 ดึงรายชื่องานที่ทำแล้วมาใส่
+    escapeCSV(s.pendingList)    // 👈 ดึงรายชื่องานที่รอส่งมาใส่
   ])
   
-  const csvContent = "\ufeff" + [headers, ...rows].map(e => e.join(",")).join("\n")
+  const csvContent = "\ufeff" + [headers.map(escapeCSV), ...rows].map(e => e.join(",")).join("\n")
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -194,6 +217,7 @@ const handleExport = () => {
           label="กรองข้อมูล (Account)"
           hide-details
           style="width: 200px;"
+          @update:modelValue="fetchTeamSummary"
         />
         <VBtn color="secondary" variant="elevated" prepend-icon="tabler-download" @click="handleExport">
           Export
@@ -342,7 +366,7 @@ const handleExport = () => {
                     {{ taskItem.task.name }}
                   </p>
                   <p class="text-caption mb-0" style="color: #4B5563;">
-                    {{ taskItem.task.reportType }}
+                    {{ taskItem.task.reportType }} {{ taskItem.status.submittedAt ? `- ส่งเมื่อ ${new Date(taskItem.status.submittedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}` : '' }}
                   </p>
                 </div>
 

@@ -32,12 +32,14 @@ const form = ref({
   endDate: '',
 })
 
-const todayStr = new Date().toISOString().split('T')[0]
+const d = new Date()
+const localDate = new Date(d.getTime() + (7 * 60 * 60 * 1000))
+const todayStr = localDate.toISOString().split('T')[0]
 
 // 🌟 ป้องกันไม่ให้เลือกวันที่ย้อนหลังในปฏิทิน (ถ้าเป็นการ Edit) 🌟
 const minDate = computed(() => {
   if (isEditing.value) {
-    const today = new Date()
+    const today = new Date(d.getTime() + (7 * 60 * 60 * 1000))
     return today.toISOString().split('T')[0] // 'YYYY-MM-DD'
   }
   return null
@@ -195,16 +197,31 @@ const availableAccounts = computed(() => {
 })
 
 const toggleGroup = (groupId) => {
-  const idx = form.value.targetGroups.indexOf(groupId)
-  idx > -1 ? form.value.targetGroups.splice(idx, 1) : form.value.targetGroups.push(groupId)
+  // บังคับแปลงเป็น String ก่อนเปรียบเทียบ
+  const strId = String(groupId)
+  const idx = form.value.targetGroups.findIndex(id => String(id) === strId)
   
-  const validAccountIds = availableAccounts.value.map(a => a.id)
-  form.value.targetAccounts = form.value.targetAccounts.filter(id => validAccountIds.includes(id))
+  if (idx > -1) {
+    form.value.targetGroups.splice(idx, 1)
+  } else {
+    form.value.targetGroups.push(groupId)
+  }
+  
+  // รีเซ็ต Account ที่ไม่ได้อยู่ใน Group ที่เลือก (กันบั๊ก Type ไม่ตรงด้วย)
+  const validAccountIds = availableAccounts.value.map(a => String(a.id))
+  form.value.targetAccounts = form.value.targetAccounts.filter(id => validAccountIds.includes(String(id)))
 }
 
 const toggleAccount = (accountId) => {
-  const idx = form.value.targetAccounts.indexOf(accountId)
-  idx > -1 ? form.value.targetAccounts.splice(idx, 1) : form.value.targetAccounts.push(accountId)
+  // บังคับแปลงเป็น String ก่อนเปรียบเทียบ
+  const strId = String(accountId)
+  const idx = form.value.targetAccounts.findIndex(id => String(id) === strId)
+  
+  if (idx > -1) {
+    form.value.targetAccounts.splice(idx, 1)
+  } else {
+    form.value.targetAccounts.push(accountId)
+  }
 }
 
 const openAddModal = (date = '') => {
@@ -226,12 +243,21 @@ const openEditModal = (taskItem) => {
   isEditing.value = true
   editTaskId.value = taskItem.id
   
+  // ฟังก์ชันช่วยเช็คและแปลงข้อมูลให้เป็น Array ชัวร์ๆ
+  const ensureArray = (data) => {
+    if (Array.isArray(data)) return [...data]
+    if (typeof data === 'string') {
+      try { return JSON.parse(data) } catch (e) { return [] }
+    }
+    return []
+  }
+
   form.value = {
     name: taskItem.name, 
     reportType: taskItem.reportType || REPORT_TYPES[0], 
     priority: taskItem.priority || 1,
-    targetGroups: taskItem.targetGroups || [], 
-    targetAccounts: taskItem.targetAccounts || [], 
+    targetGroups: ensureArray(taskItem.targetGroups),     // 👈 แก้ตรงนี้
+    targetAccounts: ensureArray(taskItem.targetAccounts), // 👈 แก้ตรงนี้
     description: taskItem.description || '',
     startDate: taskItem.scheduledDate, 
     endDate: taskItem.dueDate,
@@ -310,7 +336,7 @@ const openEditModal = (taskItem) => {
               </div>
               <VCard v-else v-for="task in getTasksForDate(selectedDate.split('-')[2])" :key="task.id" border elevation="0" class="pa-3 bg-light-warning">
                 <div class="d-flex align-center justify-space-between mb-1">
-                  <VChip :color="PRIORITY_COLORS[task.priority] || 'warning'" size="x-small" label class="text-white font-weight-bold">
+                  <VChip :color="PRIORITY_COLORS[task.priority] || 'warning'" size="x-small" label class="font-weight-bold">
                     {{ PRIORITY_LABELS[task.priority] || task.priority }}
                   </VChip>
                   
@@ -398,7 +424,7 @@ const openEditModal = (taskItem) => {
                 <VChip 
                   v-for="g in GROUPS" :key="g.id" filter 
                   @click="toggleGroup(g.id)" 
-                  :color="form.targetGroups.includes(g.id) ? 'warning' : 'default'">
+                  :color="form.targetGroups.some(id => String(id) === String(g.id)) ? 'warning' : 'default'"> <!-- 👈 แก้บรรทัดนี้ -->
                   {{ g.name }}
                 </VChip>
               </div>
@@ -411,7 +437,7 @@ const openEditModal = (taskItem) => {
                   <VChip 
                     v-for="a in availableAccounts" :key="a.id" size="small" 
                     @click="toggleAccount(a.id)" 
-                    :color="form.targetAccounts.includes(a.id) ? 'primary' : 'default'">
+                    :color="form.targetAccounts.some(id => String(id) === String(a.id)) ? 'primary' : 'default'"> <!-- 👈 แก้บรรทัดนี้ -->
                     {{ a.name }}
                   </VChip>
                 </div>
