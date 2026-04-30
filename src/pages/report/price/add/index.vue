@@ -1772,6 +1772,24 @@ export default {
         formData.append('datenow', JSON.stringify(this.date_now))
         formData.append('datesave', JSON.stringify(this.datesave))
 
+        // =================================================================
+        // 🌟 ส่วนที่เพิ่มใหม่: เช็คว่าฟอร์มมีข้อมูลจากหน้าไหนบ้าง 🌟
+        // =================================================================
+        const typesToSubmit = [];
+        
+        if (this.groupedData && Object.keys(this.groupedData).length > 0) {
+            typesToSubmit.push('Price');
+        }
+        
+        if (this.groupedData2 && Object.keys(this.groupedData2).length > 0) {
+            typesToSubmit.push('Promotion');
+        }
+        
+        // แนบตัวแปรไปกับ FormData (ถ้าไม่มีเลยจะเป็น [] ว่างๆ ฝั่ง Backend ก็แค่ไม่ทำงาน)
+        formData.append('reportTypesToSubmit', JSON.stringify(typesToSubmit));
+        console.log('Task to Auto Submit:', typesToSubmit);
+        // =================================================================
+
         // Append images
         groupedDatax.forEach((item, index) => {
           if (item.previews && Array.isArray(item.previews)) {

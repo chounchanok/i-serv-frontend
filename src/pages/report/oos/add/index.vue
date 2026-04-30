@@ -739,14 +739,12 @@ export default {
         try {
           const vm = this;
           const testform2 = [];
-          // console.log(Array.isArray(vm.groupedData));
           console.log('groupedData:', JSON.stringify(vm.groupedData, null, 2));
 
           if (typeof vm.groupedData === 'object' && vm.groupedData !== null) {
             Object.keys(vm.groupedData).forEach((key) => {
               const groupedItem = vm.groupedData[key];
               if (Array.isArray(groupedItem)) {
-                // ถ้า groupedItem เป็น Array ให้วนลูปปกติ
                 groupedItem.forEach((item) => {
                   testform2.push({
                     map_product_store_list_id: item.map_product_store_list_id,
@@ -754,11 +752,11 @@ export default {
                     oos_status: item.oos_status,
                     oos_status2: item.oos_status2,
                     not_sell: (item.not_sell == true ? 'Y' : 'N'),
-                    note: item.note
+                    note: item.note,
+                    stock: item.mapProductStoreList ? item.mapProductStoreList.stock : null
                   });
                 });
               } else {
-                // ถ้า groupedItem ยังมี nested object ให้วนลูปในระดับถัดไป
                 Object.keys(groupedItem).forEach((subKey) => {
                   const subItems = groupedItem[subKey];
                   if (Array.isArray(subItems)) {
@@ -769,7 +767,8 @@ export default {
                         oos_status: subItem.oos_status,
                         oos_status2: subItem.oos_status2,
                         not_sell: (subItem.not_sell == true ? 'Y' : 'N'),
-                        note: subItem.note
+                        note: subItem.note,
+                        stock: subItem.mapProductStoreList ? subItem.mapProductStoreList.stock : null
                       });
                     });
                   }
@@ -781,18 +780,42 @@ export default {
           if(this.userData.position_name == 'พนักงาน'){
             this.user_id = this.userData.id;
           } 
+
+          // =================================================================
+          // 🌟 ส่วนที่เพิ่มใหม่: เช็คประเภทรายงาน (OOS หรือ Stock) ที่ปรากฏบนฟอร์ม
+          // =================================================================
+          const typesToSubmit = [];
+          
+          console.log('Productlist:', vm.Productlist);
+          console.log('oosDetailsctlist:', vm.Productlist.oosDetailsctlist);
+
+          if (vm.Productlist && vm.Productlist.oosDetails) {
+            // หาว่ามีฟอร์มไหนที่ถูกเปิดใช้ OOS หรือ Stock บ้าง
+            const hasOOS = vm.Productlist.oosDetails.some(item => item.mapProductStoreList?.oos === 'Y');
+            const hasStock = vm.Productlist.oosDetails.some(item => item.mapProductStoreList?.stock === 'Y');
+
+            console.log('hasOOS:', hasOOS);
+            console.log('hasStock:', hasStock);
+            
+            // ใช้ชื่อให้ตรงกับที่คุณตั้งในระบบ Task (เช่น OOS, Stock)
+            if (hasOOS) typesToSubmit.push('OOS');
+            if (hasStock) typesToSubmit.push('Stock');
+          }
+          // =================================================================
+
           const form = {
             group_id: this.group_id,
             store_id: this.store_id,
             datenow: this.date_now,
             datesave: this.datesave,
             user_id: this.user_id,
-            testform2: testform2
+            testform2: testform2,
+            reportTypesToSubmit: typesToSubmit // 🌟 ส่งแนบไปให้ Backend
           };
 
           const response2 = await apiService.create_oos2(form);
           var data = response2.data.data;
-          this.save_oos();
+          this.save_oos(); // อัปเดต state ตัวเก่าให้ตรงกัน
           
         } catch (error) {
           console.error('Error:', error);
@@ -824,7 +847,8 @@ export default {
                     oos_status: item.oos_status,
                     oos_status2: item.oos_status2,
                     not_sell: (item.not_sell == true ? 'Y' : 'N'),
-                    note: item.note
+                    note: item.note,
+                    stock: item.mapProductStoreList ? item.mapProductStoreList.stock : null
                   });
                 });
               } else {
@@ -839,7 +863,8 @@ export default {
                         oos_status: subItem.oos_status,
                         oos_status2: subItem.oos_status2,
                         not_sell: (subItem.not_sell == true ? 'Y' : 'N'),
-                        note: subItem.note
+                        note: subItem.note,
+                        stock: subItem.mapProductStoreList ? subItem.mapProductStoreList.stock : null
                       });
                     });
                   }
