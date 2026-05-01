@@ -33,7 +33,7 @@ import noimg from '@images/noimg.png'
           </VBtn> 
         -->
 
-        <VRow class="fixed-new" style="align-items: end;justify-content: inherit; padding-right: 10px;">
+        <VRow class="fixed-new" style="align-items: end;justify-content: inherit; padding-right: 30px;">
           <VCol
             v-if="userData.position_name != 'พนักงาน'"
             cols="8"
@@ -71,16 +71,18 @@ import noimg from '@images/noimg.png'
               variant="elevated"
               class="responsive-btn"
               @click="exportData('excelprice')"
+              icon="tabler-file-invoice"
+              style="border-radius: 10px; padding-left: 20px; padding-right: 20px;"
             >
-              Export
             </VBtn>
             
             <VBtn
               v-if="Productlist.id>0 && userData.position_name != 'Assistant Management' && userData.position_name != 'Management'"
               color="primary"
               @click="save_PricePromotion_confirm"
+              icon="tabler-device-floppy"
+              style="border-radius: 10px; padding-left: 20px; padding-right: 20px;"
             >
-              บันทึก
             </VBtn>
           </VCol>
         </VRow>
