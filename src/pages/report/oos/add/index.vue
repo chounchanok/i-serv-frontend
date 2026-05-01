@@ -41,7 +41,7 @@ import noimg from '@images/noimg.png';
         <!-- <VBtn variant="tonal" color="secondary" @click="get_all_Oos">
           โหลดข้อมูล
         </VBtn> -->
-        <VRow class="fixed-new" style="align-items: end;justify-content: end;">
+        <VRow class="fixed-new" style="align-items: end;justify-content: inherit; padding-right: 10px;">
           <VCol cols="8" md="5" style="display: flex;align-items: center;justify-content: center;gap: 5px;" v-if="userData.position_name != 'พนักงาน'">
             <VTextField
               v-model="startDate_select"

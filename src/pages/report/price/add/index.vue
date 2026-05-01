@@ -33,10 +33,7 @@ import noimg from '@images/noimg.png'
           </VBtn> 
         -->
 
-        <VRow
-          class="fixed-new"
-          style="align-items: end;justify-content: end;"
-        >
+        <VRow class="fixed-new" style="align-items: end;justify-content: inherit; padding-right: 10px;">
           <VCol
             v-if="userData.position_name != 'พนักงาน'"
             cols="8"

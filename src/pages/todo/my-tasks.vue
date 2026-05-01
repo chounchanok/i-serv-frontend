@@ -97,14 +97,14 @@ const dateStr = computed(() => {
     
     <div class="d-flex align-start justify-space-between">
       <div>
-        <h1 class="text-h5 font-weight-bold" style="color: #1F2937;">รายการงานของฉัน</h1>
+        <h1 class="text-h6 font-weight-bold" style="color: #1F2937;">รายการงานของฉัน</h1>
         <p class="text-caption mt-1" style="color: #6B7280;">{{ dateStr }}</p>
       </div>
       <div class="d-flex align-center gap-3 text-caption font-weight-bold">
-        <span class="px-3 py-1" style="border-radius: 100px; background: #F0FDF4; color: #22C55E;">
+        <span class="py-1" style="border-radius: 8px; padding: 2px; background: #F0FDF4; color: #22C55E;">
           ส่งแล้ว {{ todaySubmitted.length }}
         </span>
-        <span class="px-3 py-1" style="border-radius: 100px; background: #FFF9E6; color: #D97706;">
+        <span class="py-1" style="border-radius: 8px; padding: 2px; background: #FFF9E6; color: #D97706;">
           รอดำเนินการ {{ todayPending.length }}
         </span>
       </div>
@@ -124,7 +124,7 @@ const dateStr = computed(() => {
       </div>
       
       <div class="d-flex justify-space-between mt-2">
-        <span class="text-caption" style="color: #9CA3AF;">0 รายการ</span>
+        <span class="text-caption" style="color: #9CA3AF;">{{ todaySubmitted.length }} รายการ</span>
         <span class="text-caption" style="color: #9CA3AF;">{{ totalTodayTasks }} รายการ</span>
       </div>
     </div>
