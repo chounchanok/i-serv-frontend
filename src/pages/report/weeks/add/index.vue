@@ -68,7 +68,7 @@ import noimg from '@images/noimg.png';
               class="responsive-btn"
               icon="tabler-file-invoice"
               style="border-radius: 10px; padding-left: 20px; padding-right: 20px;"
-            >
+             >
             </VBtn>
             
             <VBtn v-if="Productlist.id>0 && userData.position_name != 'Assistant Management' && userData.position_name != 'Management'" color="primary" @click="save_week_confirm" icon="tabler-device-floppy"
