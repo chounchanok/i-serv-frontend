@@ -28,10 +28,8 @@ const fetchTasks = async () => {
       description: item.task_detail?.description || '',
       targetBrands: item.task_detail?.target_brands ? [String(item.task_detail.target_brands)] : [],
       status: item.status,
-      
-      // 🌟 หัวใจสำคัญ: ดึง task_date แล้วตัดตัวอักษร T และเวลาทิ้ง ให้เหลือแค่ 'YYYY-MM-DD' เพื่อใช้เทียบตรงๆ
+      reason: item.reason || '', // 🌟 ดึงข้อมูลเหตุผลการลา
       taskDate: item.task_date ? String(item.task_date).split('T')[0] : '', 
-
       submittedAt: item.submitted_at 
         ? new Date(item.submitted_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
         : ''
@@ -65,7 +63,6 @@ const toggleExpand = (id) => {
   expandedId.value = expandedId.value === id ? null : id
 }
 
-// 🌟 สร้างวันที่ YYYY-MM-DD แบบไม่เพี้ยน Timezone 🌟
 const getDateStr = (offsetDays = 0) => {
   const d = new Date()
   d.setDate(d.getDate() + offsetDays)
@@ -76,14 +73,18 @@ const getDateStr = (offsetDays = 0) => {
 const todayStr = getDateStr(0)
 const tomorrowStr = getDateStr(1)
 
-// 🌟 กรองให้แสดงเฉพาะงานที่ taskDate ตรงกับ "วันนี้" หรือ "พรุ่งนี้" เป๊ะๆ 🌟
 const todayPending = computed(() => myTasks.value.filter(t => t.status === 'pending' && t.taskDate === todayStr))
 const todaySubmitted = computed(() => myTasks.value.filter(t => t.status === 'submitted' && t.taskDate === todayStr))
+// 🌟 เพิ่มการกรองเพื่อหาข้อมูลการลา
+const todayLeaved = computed(() => myTasks.value.filter(t => t.status === 'leaved' && t.taskDate === todayStr))
 const tomorrowTasks = computed(() => myTasks.value.filter(t => t.taskDate === tomorrowStr))
 
-// สถิติความคืบหน้าของ "วันนี้" เท่านั้น
-const totalTodayTasks = computed(() => todayPending.value.length + todaySubmitted.value.length)
-const progressPct = computed(() => totalTodayTasks.value > 0 ? Math.round((todaySubmitted.value.length / totalTodayTasks.value) * 100) : 0)
+const totalTodayTasks = computed(() => todayPending.value.length + todaySubmitted.value.length + todayLeaved.value.length)
+// 🌟 ซ่อนเปอร์เซ็นต์ถ้ามีการแจ้งลา (หรือจะคิดจากจำนวนที่ทำไปแล้วก็ได้)
+const progressPct = computed(() => {
+  if (todayLeaved.value.length > 0 && todayPending.value.length === 0) return 100 // ลาแล้ว ถือว่างานวันนี้เคลียร์หมด
+  return totalTodayTasks.value > 0 ? Math.round((todaySubmitted.value.length / totalTodayTasks.value) * 100) : 0
+})
 
 const dateStr = computed(() => {
   return new Date().toLocaleDateString('th-TH', {
@@ -110,7 +111,18 @@ const dateStr = computed(() => {
       </div>
     </div>
 
-    <div class="pa-5" style="background: white; border-radius: 16px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">
+    <!-- 🌟 โชว์ Banner หากแจ้งลาแล้ว -->
+    <div v-if="todayLeaved.length > 0" class="pa-5 d-flex align-center gap-4" style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 16px;">
+      <VIcon icon="tabler-calendar-off" size="40" color="error" />
+      <div>
+        <h3 class="text-subtitle-1 font-weight-bold text-error mb-1">คุณได้แจ้งลาสำหรับวันนี้เรียบร้อยแล้ว</h3>
+        <p class="text-caption mb-0" style="color: #991B1B;">
+          เหตุผล: {{ todayLeaved[0].reason === 'sick' ? 'ลาป่วย (Sick)' : 'ลาหยุด (Holiday)' }}
+        </p>
+      </div>
+    </div>
+
+    <div v-else class="pa-5" style="background: white; border-radius: 16px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);">
       <div class="d-flex align-center justify-space-between mb-2">
         <span class="text-subtitle-2 font-weight-medium" style="color: #374151;">ความคืบหน้าวันนี้</span>
         <span class="text-subtitle-2 font-weight-bold" style="color: #F5A623;">{{ progressPct }}%</span>
@@ -171,17 +183,6 @@ const dateStr = computed(() => {
               <VIcon :icon="expandedId === taskItem.id ? 'tabler-chevron-up' : 'tabler-chevron-down'" />
             </VBtn>
           </div>
-
-          <!-- <div class="px-4 pb-4 d-flex justify-end">
-            <button 
-              @click="submitTask(taskItem.id)"
-              class="d-flex align-center gap-2 px-4 py-2 text-subtitle-2 font-weight-bold"
-              style="border-radius: 12px; background: #F5A623; color: white; border: none; cursor: pointer; transition: opacity 0.2s;"
-              onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'"
-            >
-              <VIcon icon="tabler-circle-check" size="18" /> ส่งรายงาน
-            </button>
-          </div> -->
         </div>
       </div>
     </div>
