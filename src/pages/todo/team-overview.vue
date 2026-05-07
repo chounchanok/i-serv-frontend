@@ -172,7 +172,7 @@ const handleExport = () => {
   const rows = filteredSummaries.value.map(s => {
     // กำหนดสถานะ
     let statusText = 'ทำงาน'
-    if (s.isLeaved) statusText = s.leaveReason === 'sick' ? 'ลาป่วย' : 'ลาหยุด'
+    if (s.isLeaved) statusText = s.leaveReason === 'sick' ? 'ลา' : 'วันหยุด'
 
     return [
       escapeCSV(s.employee.name),
@@ -299,7 +299,7 @@ const handleExport = () => {
             <!-- 🌟 แสดงสถานะการทำงาน/ลา -->
             <template #item.status="{ item }">
               <VChip v-if="item.isLeaved" color="error" size="small" variant="tonal" class="font-weight-bold">
-                {{ item.leaveReason === 'sick' ? 'ลาป่วย' : 'ลาหยุด' }}
+                {{ item.leaveReason === 'sick' ? 'ลา' : 'วันหยุด' }}
               </VChip>
               <VChip v-else color="success" size="small" variant="tonal">ทำงาน</VChip>
             </template>
@@ -339,7 +339,7 @@ const handleExport = () => {
         <VCardText class="pa-6">
           <div v-if="selectedEmployee.isLeaved" class="pa-4 mb-4 text-center" style="background: #FEF2F2; border-radius: 8px;">
             <VIcon icon="tabler-calendar-off" color="error" size="32" class="mb-2" />
-            <p class="text-error font-weight-bold mb-0">พนักงานแจ้ง{{ selectedEmployee.leaveReason === 'sick' ? 'ลาป่วย' : 'ลาหยุด' }}สำหรับวันนี้</p>
+            <p class="text-error font-weight-bold mb-0">พนักงานแจ้ง{{ selectedEmployee.leaveReason === 'sick' ? 'ลา' : 'วันหยุด' }}สำหรับวันนี้</p>
           </div>
 
           <VRow class="text-center mb-4 border-bottom pb-4">

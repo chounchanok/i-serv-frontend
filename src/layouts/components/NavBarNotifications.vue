@@ -207,7 +207,7 @@ const currentDateTime = computed(() => {
           class="flex-grow-1"
           style="border-radius: 8px; font-weight: bold;"
         >
-          ลา
+          หยุด
         </VBtn>
         <VBtn 
           variant="elevated" 
@@ -225,12 +225,12 @@ const currentDateTime = computed(() => {
   <VDialog v-model="isLeaveModalVisible" max-width="400">
     <VCard style="border-radius: 12px;">
       <VCardTitle class="text-center pt-6 pb-2 font-weight-bold">
-        ระบุเหตุผลการลา
+        ระบุเหตุผล
       </VCardTitle>
       <VCardText>
         <VRadioGroup v-model="leaveReason">
-          <VRadio label="ลาหยุด (Holiday)" value="holiday" color="primary"></VRadio>
-          <VRadio label="ลาป่วย (Sick)" value="sick" color="error"></VRadio>
+          <VRadio label="วันหยุด" value="holiday" color="primary"></VRadio>
+          <VRadio label="ลา" value="sick" color="error"></VRadio>
         </VRadioGroup>
       </VCardText>
       
@@ -252,7 +252,7 @@ const currentDateTime = computed(() => {
           @click="submitLeave" 
           :loading="isSubmittingLeave"
         >
-          ยืนยันการลา
+          ยืนยัน
         </VBtn>
       </VCardActions>
       
