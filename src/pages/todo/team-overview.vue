@@ -245,7 +245,7 @@ const handleExport = () => {
           <VAvatar color="error" variant="tonal" rounded="lg"><VIcon icon="tabler-user-x" /></VAvatar>
           <div>
             <h3 class="text-h4 font-weight-bold text-error">{{ stats.onLeave }}</h3>
-            <span class="text-caption text-medium-emphasis">ลาวันนี้</span>
+            <span class="text-caption text-medium-emphasis">หยุดวันนี้</span>
           </div>
         </VCard>
       </VCol>
