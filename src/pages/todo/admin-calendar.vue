@@ -12,6 +12,7 @@ const GROUPS = ref([])    // รับ GroupCustomer จาก API
 const ACCOUNTS = ref([])  // รับ Account จาก API
 const tasks = ref([])
 
+const loggedInUserGroup = ref(null)
 const filterGroup = ref('all') // เปลี่ยนตัวกรองมุมขวาบนให้เป็น Group
 const isAddModalVisible = ref(false)
 const selectedDate = ref(null)
@@ -52,6 +53,14 @@ const fetchMasterData = async () => {
     const userDataString = localStorage.getItem('userData')
     const userData = userDataString ? JSON.parse(userDataString) : {}
     
+    // 🌟 เก็บค่า Group ID ของ User ปัจจุบัน
+    loggedInUserGroup.value = userData.group_customer_id || null
+
+    // 🌟 ให้ตัวกรอง (มุมขวาบน) เลือก Group ตาม User ที่ Login อัตโนมัติ (ถ้า User มี Group)
+    if (loggedInUserGroup.value) {
+      filterGroup.value = loggedInUserGroup.value
+    }
+
     const userPayload = {
       position_name: userData.position_name || 'SuperAdmin',
       user_id: userData.id,
@@ -230,9 +239,15 @@ const openAddModal = (date = '') => {
   editTaskId.value = null
   
   form.value = {
-    name: '', reportType: REPORT_TYPES[0], priority: 1,
-    targetGroups: [], targetAccounts: [], description: '',
-    startDate: defaultDate, endDate: defaultDate,
+    name: '', 
+    reportType: REPORT_TYPES[0], 
+    priority: 1,
+    // 🌟 เลือกกลุ่มลูกค้าตาม User ที่ Login เข้ามาทันที
+    targetGroups: loggedInUserGroup.value ? [loggedInUserGroup.value] : [], 
+    targetAccounts: [], 
+    description: '',
+    startDate: defaultDate, 
+    endDate: defaultDate,
   }
   isAddModalVisible.value = false 
   setTimeout(() => { isAddModalVisible.value = true }, 50)
