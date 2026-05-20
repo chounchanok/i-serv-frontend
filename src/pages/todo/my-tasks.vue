@@ -91,6 +91,57 @@ const dateStr = computed(() => {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   })
 })
+
+// 🌟 ตัวแปรสำหรับการเปลี่ยนเหตุผลการลา
+const showEditLeaveDialog = ref(false)
+const editLeaveReason = ref('sick')
+
+// เปิดป๊อปอัปแก้ไขการลา
+const openEditLeave = () => {
+  if (todayLeaved.value.length > 0) {
+    editLeaveReason.value = todayLeaved.value[0].reason || 'sick'
+  }
+  showEditLeaveDialog.value = true
+}
+
+// ยืนยันเปลี่ยนเหตุผล
+const submitEditLeave = async () => {
+  try {
+    const userDataString = localStorage.getItem('userData')
+    const userData = userDataString ? JSON.parse(userDataString) : {}
+    
+    // (เช็ค path ของ api ให้ตรงกับที่คุณประกาศไว้ใน route ของคุณนะครับ)
+    await $api('/employee/leave-tasks', {
+      method: 'POST',
+      body: { userId: userData.id, reason: editLeaveReason.value }
+    })
+    
+    showEditLeaveDialog.value = false
+    fetchTasks() 
+  } catch (error) {
+    console.error('Error editing leave:', error)
+  }
+}
+
+// ยกเลิกการลา (ดึงงานกลับมาเป็น pending)
+const cancelLeave = async () => {
+  if (!confirm('คุณต้องการยกเลิกการลาและดึงงานของวันนี้กลับมาทำใช่หรือไม่?')) return
+
+  try {
+    const userDataString = localStorage.getItem('userData')
+    const userData = userDataString ? JSON.parse(userDataString) : {}
+    
+    // (เช็ค path ของ api ให้ตรงกับที่คุณประกาศไว้ใน route ของคุณนะครับ)
+    await $api('/employee/cancel-leave', {
+      method: 'POST',
+      body: { userId: userData.id }
+    })
+    
+    fetchTasks() 
+  } catch (error) {
+    console.error('Error canceling leave:', error)
+  }
+}
 </script>
 
 <template>
@@ -112,13 +163,25 @@ const dateStr = computed(() => {
     </div>
 
     <!-- 🌟 โชว์ Banner หากแจ้งลาแล้ว -->
-    <div v-if="todayLeaved.length > 0" class="pa-5 d-flex align-center gap-4" style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 16px;">
-      <VIcon icon="tabler-calendar-off" size="40" color="error" />
-      <div>
-        <h3 class="text-subtitle-1 font-weight-bold text-error mb-1">คุณได้แจ้งลาสำหรับวันนี้เรียบร้อยแล้ว</h3>
-        <p class="text-caption mb-0" style="color: #991B1B;">
-          เหตุผล: {{ todayLeaved[0].reason === 'sick' ? 'ลาป่วย (Sick)' : 'ลาหยุด (Holiday)' }}
-        </p>
+    <div v-if="todayLeaved.length > 0" class="pa-5 d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between gap-4" style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 16px;">
+      <div class="d-flex align-center gap-4">
+        <VIcon icon="tabler-calendar-off" size="40" color="error" />
+        <div>
+          <h3 class="text-subtitle-1 font-weight-bold text-error mb-1">คุณได้แจ้งลาสำหรับวันนี้เรียบร้อยแล้ว</h3>
+          <p class="text-caption mb-0" style="color: #991B1B;">
+            เหตุผล: {{ todayLeaved[0].reason === 'sick' ? 'ลา' : 'วันหยุด' }}
+          </p>
+        </div>
+      </div>
+      
+      <!-- 🌟 เพิ่มปุ่มจัดการการลา -->
+      <div class="d-flex gap-2">
+        <VBtn size="small" color="warning" variant="tonal" @click="openEditLeave">
+          เปลี่ยนเหตุผล
+        </VBtn>
+        <VBtn size="small" color="error" variant="outlined" @click="cancelLeave">
+          ยกเลิกการลา
+        </VBtn>
       </div>
     </div>
 
@@ -262,4 +325,21 @@ const dateStr = computed(() => {
     </div>
 
   </div>
+
+  <VDialog v-model="showEditLeaveDialog" max-width="400px">
+    <VCard class="pa-4">
+      <VCardTitle class="text-h6 font-weight-bold pb-2">เปลี่ยนเหตุผลการลา</VCardTitle>
+      <VCardText>
+        <VRadioGroup v-model="editLeaveReason">
+          <VRadio label="วันหยุด" value="holiday" color="warning"></VRadio>
+          <VRadio label="ลา" value="sick" color="error"></VRadio>
+        </VRadioGroup>
+      </VCardText>
+      <VCardActions class="pt-0">
+        <VSpacer />
+        <VBtn color="secondary" variant="text" @click="showEditLeaveDialog = false">ยกเลิก</VBtn>
+        <VBtn color="primary" variant="elevated" @click="submitEditLeave">บันทึก</VBtn>
+      </VCardActions>
+    </VCard>
+  </VDialog>
 </template>

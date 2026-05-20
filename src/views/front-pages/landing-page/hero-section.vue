@@ -215,8 +215,9 @@ const translateMouse = computed(() => {
                 variant="elevated"
                 class="responsive-btn"
                 @click="exportData('compliance')"
+                icon="tabler-file-invoice"
+                style="border-radius: 10px; padding-left: 20px; padding-right: 20px;"
               >
-                Export
               </VBtn>
             </div>
 
@@ -226,8 +227,9 @@ const translateMouse = computed(() => {
                 variant="elevated"
                 class="responsive-btn"
                 @click="exportData('extra')"
+                icon="tabler-file-invoice"
+                style="border-radius: 10px; padding-left: 20px; padding-right: 20px;"
               >
-                Export
               </VBtn>
             </div>
 
@@ -237,8 +239,9 @@ const translateMouse = computed(() => {
               class="responsive-btn"
               :disabled="isBtnDisabled"
               @click="testclick"
+              icon="tabler-device-floppy"
+              style="border-radius: 10px; padding-left: 20px; padding-right: 20px;"
             >
-              บันทึก
             </VBtn>
           </div>
         </VAppBar>
@@ -417,11 +420,11 @@ const translateMouse = computed(() => {
                                   class="img-width"
                                 >
                                   <a 
-                                    :href="'https://test.iservreport.com/' + value3.mapStoreComplianceList.product.picture" 
+                                    :href="'https://api.iservreport.com/' + value3.mapStoreComplianceList.product.picture" 
                                     data-fancybox="single-image"
                                   >
                                     <img 
-                                      :src="'https://test.iservreport.com/' + value3.mapStoreComplianceList.product.picture" 
+                                      :src="'https://api.iservreport.com/' + value3.mapStoreComplianceList.product.picture" 
                                       class="card-img-top" 
                                       style="block-size: 50px; inline-size: 50px; object-fit: cover;" 
                                     >
@@ -433,7 +436,7 @@ const translateMouse = computed(() => {
                                   class="img-width"
                                 >
                                   <img 
-                                    src="https://test.iservreport.com/images/picture/noimage.jpg" 
+                                    src="https://api.iservreport.com/images/picture/noimage.jpg" 
                                     class="card-img-top" 
                                     style="block-size: 50px; inline-size: 50px; object-fit: cover;" 
                                   >
@@ -1113,13 +1116,13 @@ const translateMouse = computed(() => {
                                       md="3"
                                       lg="2"
                                     >
-                                      <!-- <div class="position-relative" :style="'cursor: pointer;background-image: url(https://test.iservreport.com/'+image.filename+');background-size: cover;background-position: center center;background-repeat: no-repeat;width: 218px;height: 227px;opacity: 1;transform: translate3d(0px, 0px, 0px);'"> -->
+                                      <!-- <div class="position-relative" :style="'cursor: pointer;background-image: url(https://api.iservreport.com/'+image.filename+');background-size: cover;background-position: center center;background-repeat: no-repeat;width: 218px;height: 227px;opacity: 1;transform: translate3d(0px, 0px, 0px);'"> -->
                                               
                                       <div
                                         class="position-relative"
                                         :style="{
                                           cursor: 'pointer',
-                                          backgroundImage: image.url ? `url('${image.url}')` : `url('https://test.iservreport.com/${image.filename}')`,
+                                          backgroundImage: image.url ? `url('${image.url}')` : `url('https://api.iservreport.com/${image.filename}')`,
                                           backgroundSize: 'cover',
                                           backgroundPosition: 'center center',
                                           backgroundRepeat: 'no-repeat',
@@ -3137,7 +3140,7 @@ export default {
       Fancybox.close()
       Fancybox.show(
         imagePreviews.map(image => ({
-          src: 'https://test.iservreport.com/'+image.filename,
+          src: 'https://api.iservreport.com/'+image.filename,
           type: "image",
           caption: `
                     <div style="position: relative;">
@@ -3335,7 +3338,7 @@ export default {
       Fancybox.close()
       Fancybox.show(
         imagePreviews.map(image => ({
-          src: 'https://test.iservreport.com/'+image.filename,
+          src: 'https://api.iservreport.com/'+image.filename,
           type: "image",
           caption: `
                     <div style="position: relative;">
@@ -3490,7 +3493,7 @@ export default {
       Fancybox.close()
       Fancybox.show(
         imagePreviews.map(image => ({
-          src: 'https://test.iservreport.com/'+image.filename,
+          src: 'https://api.iservreport.com/'+image.filename,
           type: "image",
           caption: `
                     <div style="position: relative;">
@@ -3576,7 +3579,7 @@ export default {
       Fancybox.close()
       Fancybox.show(
         imagePreviews.map(image => ({
-          src: 'https://test.iservreport.com/'+image.filename,
+          src: 'https://api.iservreport.com/'+image.filename,
           type: "image",
           caption: `
                     <div style="position: relative;">
