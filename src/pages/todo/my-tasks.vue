@@ -18,7 +18,10 @@ const fetchTasks = async () => {
       return
     }
 
-    const response = await $api(`/employee/my-tasks/${userData.id}`)
+    const res = await $api(`/employee/my-tasks/${userData.id}`)
+    // 🌟 กันกรณี API ตอบกลับมาไม่ใช่ Array
+    const response = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])
+    if (!Array.isArray(res) && !Array.isArray(res?.data)) console.warn('my-tasks API ตอบกลับไม่ใช่ Array:', res)
     
     myTasks.value = response.map(item => ({
       id: item.id,
@@ -32,7 +35,13 @@ const fetchTasks = async () => {
       taskDate: item.task_date ? String(item.task_date).split('T')[0] : '', 
       submittedAt: item.submitted_at 
         ? new Date(item.submitted_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) 
-        : ''
+        : '',
+      // 🌟 งานแบบทำครั้งเดียว
+      isOneTime: !!item.is_one_time,
+      oneTimeDone: !!item.one_time_done,
+      oneTimeDoneDate: item.one_time_done_date ? String(item.one_time_done_date).split('T')[0] : '',
+      startDate: item.task_detail?.start_date ? String(item.task_detail.start_date).split('T')[0] : '',
+      endDate: item.task_detail?.end_date ? String(item.task_detail.end_date).split('T')[0] : '',
     }))
   } catch (error) {
     console.error('Error fetching tasks:', error)
@@ -72,6 +81,21 @@ const getDateStr = (offsetDays = 0) => {
 
 const todayStr = getDateStr(0)
 const tomorrowStr = getDateStr(1)
+
+// 🌟 แปลง YYYY-MM-DD -> DD/MM/YYYY (พ.ศ.) สำหรับแสดงผล
+const formatThaiDate = (ymd) => {
+  if (!ymd) return ''
+  const [y, m, d] = ymd.split('-')
+  return `${d}/${m}/${Number(y) + 543}`
+}
+
+// 🌟 ข้อความสถานะ "ส่งแล้ว" (งานทำครั้งเดียวที่ส่งในวันอื่น ให้บอกวันที่ส่ง)
+const submittedLabel = (t) => {
+  if (t.isOneTime && t.oneTimeDone && t.oneTimeDoneDate && t.oneTimeDoneDate !== t.taskDate) {
+    return `ส่งแล้วเมื่อ ${formatThaiDate(t.oneTimeDoneDate)} ${t.submittedAt}`.trim()
+  }
+  return `ส่งแล้ว ${t.submittedAt}`.trim()
+}
 
 const todayPending = computed(() => myTasks.value.filter(t => t.status === 'pending' && t.taskDate === todayStr))
 const todaySubmitted = computed(() => myTasks.value.filter(t => t.status === 'submitted' && t.taskDate === todayStr))
@@ -231,6 +255,9 @@ const cancelLeave = async () => {
                 <div>
                   <p class="text-subtitle-2 font-weight-bold mb-0" style="color: #1F2937;">{{ taskItem.name }}</p>
                   <p class="text-caption mb-0" style="color: #6B7280;">รายงาน {{ taskItem.reportType }}</p>
+                  <p v-if="taskItem.isOneTime" class="text-caption mb-0 mt-1" style="color: #2563EB;">
+                    <VIcon icon="tabler-repeat-once" size="14" /> ทำครั้งเดียว ภายใน {{ formatThaiDate(taskItem.endDate) }}
+                  </p>
                 </div>
                 <span class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #FEF3C7; color: #92400E;">
                   รอดำเนินการ
@@ -272,9 +299,12 @@ const cancelLeave = async () => {
                 <div>
                   <p class="text-subtitle-2 font-weight-bold mb-0" style="color: #1F2937;">{{ taskItem.name }}</p>
                   <p class="text-caption mb-0" style="color: #6B7280;">รายงาน {{ taskItem.reportType }}</p>
+                  <p v-if="taskItem.isOneTime" class="text-caption mb-0 mt-1" style="color: #2563EB;">
+                    <VIcon icon="tabler-repeat-once" size="14" /> ทำครั้งเดียว ({{ formatThaiDate(taskItem.startDate) }} - {{ formatThaiDate(taskItem.endDate) }})
+                  </p>
                 </div>
                 <span class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #DCFCE7; color: #166534;">
-                  ส่งแล้ว {{ taskItem.submittedAt }}
+                  {{ submittedLabel(taskItem) }}
                 </span>
               </div>
 
@@ -314,7 +344,10 @@ const cancelLeave = async () => {
                   <p class="text-subtitle-2 font-weight-bold mb-0" style="color: #4B5563;">{{ taskItem.name }}</p>
                   <p class="text-caption mb-0" style="color: #9CA3AF;">รายงาน {{ taskItem.reportType }}</p>
                 </div>
-                <span class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #E2E8F0; color: #475569;">
+                <span v-if="taskItem.status === 'submitted'" class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #DCFCE7; color: #166534;">
+                  ส่งแล้ว (ทำครั้งเดียว)
+                </span>
+                <span v-else class="px-3 py-1 text-caption font-weight-bold flex-shrink-0" style="border-radius: 100px; background: #E2E8F0; color: #475569;">
                   รอทำพรุ่งนี้
                 </span>
               </div>

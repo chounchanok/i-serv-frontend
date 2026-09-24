@@ -20,6 +20,23 @@ const getTodayStr = () => {
 }
 const todayStr = getTodayStr()
 
+// 🌟 แปลง YYYY-MM-DD -> DD/MM/YYYY (พ.ศ.)
+const formatThaiDate = (ymd) => {
+  if (!ymd) return ''
+  const [y, m, d] = ymd.split('-')
+  return `${d}/${m}/${Number(y) + 543}`
+}
+
+// 🌟 ข้อความเวลาส่ง (งานทำครั้งเดียวที่ส่งวันอื่น แสดงวันที่ด้วย)
+const submittedText = (taskItem) => {
+  const at = taskItem.status.submittedAt
+  if (!at) return ''
+  const time = new Date(at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+  if (taskItem.oneTime.isOneTime && taskItem.oneTime.doneDate && taskItem.oneTime.doneDate !== todayStr)
+    return `- ส่งเมื่อ ${formatThaiDate(taskItem.oneTime.doneDate)} ${time}`
+  return `- ส่งเมื่อ ${time}`
+}
+
 const fetchTeamSummary = async () => {
   try {
     const userDataString = localStorage.getItem('userData')
@@ -75,6 +92,14 @@ const openDetail = async (summary) => {
       })
       .map(item => ({
         status: { status: item.status, submittedAt: item.submitted_at },
+        // 🌟 งานแบบทำครั้งเดียว
+        oneTime: {
+          isOneTime: !!item.is_one_time,
+          done: !!item.one_time_done,
+          doneDate: item.one_time_done_date ? String(item.one_time_done_date).split('T')[0] : '',
+          startDate: item.task_detail?.start_date ? String(item.task_detail.start_date).split('T')[0] : '',
+          endDate: item.task_detail?.end_date ? String(item.task_detail.end_date).split('T')[0] : '',
+        },
         task: { 
           id: item.task_detail?.id, 
           name: item.task_detail?.name || 'ไม่ได้ระบุชื่องาน', 
@@ -388,7 +413,11 @@ const handleExport = () => {
                   <p class="text-caption mb-0" style="color: #4B5563;">
                     {{ taskItem.task.reportType }} 
                     <span v-if="taskItem.status.status === 'leaved'" class="text-error font-weight-bold"> (ลา)</span>
-                    {{ taskItem.status.submittedAt ? `- ส่งเมื่อ ${new Date(taskItem.status.submittedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}` : '' }}
+                    {{ submittedText(taskItem) }}
+                  </p>
+                  <p v-if="taskItem.oneTime.isOneTime" class="text-caption mb-0" style="color: #2563EB;">
+                    <VIcon icon="tabler-repeat-once" size="14" />
+                    ทำครั้งเดียว ({{ formatThaiDate(taskItem.oneTime.startDate) }} - {{ formatThaiDate(taskItem.oneTime.endDate) }})
                   </p>
                 </div>
 

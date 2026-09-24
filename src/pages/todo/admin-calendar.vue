@@ -31,6 +31,7 @@ const form = ref({
   description: '',
   startDate: '',
   endDate: '',
+  isOneTime: false, // 🌟 ทำครั้งเดียว
 })
 
 const d = new Date()
@@ -109,7 +110,8 @@ const fetchTasks = async () => {
       targetGroups: t.target_brands || [], // Backend map field นี้อยู่
       targetAccounts: t.target_stores || [], // Backend map field นี้อยู่
       status: 'assigned', 
-      description: t.description
+      description: t.description,
+      isOneTime: t.is_one_time === true || t.is_one_time === 1 || t.is_one_time === '1' // 🌟 ทำครั้งเดียว
     }))
   } catch (error) {
     console.error('Error fetching admin tasks:', error)
@@ -126,7 +128,8 @@ const saveTask = async () => {
         endDate: form.value.endDate,
         description: form.value.description,
         targetGroups: form.value.targetGroups,
-        targetAccounts: form.value.targetAccounts
+        targetAccounts: form.value.targetAccounts,
+        isOneTime: form.value.isOneTime // 🌟 ทำครั้งเดียว
     }
 
     // 🌟 ถ้าเป็นโหมด Edit ให้ยิง PUT ไปที่ ID นั้น 🌟
@@ -248,6 +251,7 @@ const openAddModal = (date = '') => {
     description: '',
     startDate: defaultDate, 
     endDate: defaultDate,
+    isOneTime: false,
   }
   isAddModalVisible.value = false 
   setTimeout(() => { isAddModalVisible.value = true }, 50)
@@ -276,6 +280,7 @@ const openEditModal = (taskItem) => {
     description: taskItem.description || '',
     startDate: taskItem.scheduledDate, 
     endDate: taskItem.dueDate,
+    isOneTime: !!taskItem.isOneTime,
   }
   isAddModalVisible.value = true
 }
@@ -325,7 +330,7 @@ const openEditModal = (taskItem) => {
                 <div class="task-dots-container mt-1">
                   <div v-for="task in getTasksForDate(day).slice(0, 2)" :key="task.id" 
                        class="task-badge" :style="{ background: PRIORITY_COLORS[task.priority] || '#F5A623' }">
-                    [{{ PRIORITY_LABELS[task.priority] }}] {{ task.name }}
+                    [{{ PRIORITY_LABELS[task.priority] }}]<span v-if="task.isOneTime"> [1×]</span> {{ task.name }}
                   </div>
                   <div v-if="getTasksForDate(day).length > 2" class="text-caption text-disabled" style="font-size: 10px;">+{{ getTasksForDate(day).length - 2 }} อื่นๆ</div>
                 </div>
@@ -361,7 +366,10 @@ const openEditModal = (taskItem) => {
                   </div>
                 </div>
                 <div class="text-subtitle-2 font-weight-bold">{{ task.name }}</div>
-                <div class="text-caption text-medium-emphasis">{{ task.reportType }}</div>
+                <div class="text-caption text-medium-emphasis">
+                  {{ task.reportType }}
+                  <VChip v-if="task.isOneTime" size="x-small" color="info" variant="tonal" class="ms-1">ทำครั้งเดียว</VChip>
+                </div>
               </VCard>
             </div>
           </div>
@@ -381,6 +389,7 @@ const openEditModal = (taskItem) => {
         { title: 'ความสำคัญ', key: 'priority' },
         { title: 'วันที่เริ่มต้น', key: 'scheduledDate' },
         { title: 'วันที่สิ้นสุด', key: 'dueDate' },
+        { title: 'รูปแบบ', key: 'isOneTime', align: 'center' },
         { title: 'จัดการ', key: 'actions', align: 'center', sortable: false }
       ]" class="text-no-wrap">
         
@@ -394,6 +403,10 @@ const openEditModal = (taskItem) => {
         </template>
         <template #item.dueDate="{ item }">
           {{ item.dueDate || 'ไม่ระบุ' }}
+        </template>
+        <template #item.isOneTime="{ item }">
+          <VChip v-if="item.isOneTime" size="small" color="info" variant="tonal" label>ทำครั้งเดียว</VChip>
+          <VChip v-else size="small" color="secondary" variant="tonal" label>ทุกวัน</VChip>
         </template>
 
         <template #item.actions="{ item }">
@@ -420,6 +433,21 @@ const openEditModal = (taskItem) => {
           <VRow>
             <VCol cols="12" sm="6"><AppTextField v-model="form.startDate" label="วันเริ่มต้น" type="date" :min="minDate" /></VCol>
             <VCol cols="12" sm="6"><AppTextField v-model="form.endDate" label="วันสิ้นสุด" type="date" :min="form.startDate || minDate" /></VCol>
+
+            <!-- 🌟 ทำครั้งเดียว -->
+            <VCol cols="12" class="pt-0">
+              <div class="pa-3 border rounded-lg" :class="form.isOneTime ? 'bg-light-primary' : ''">
+                <VCheckbox v-model="form.isOneTime" color="primary" hide-details density="compact">
+                  <template #label>
+                    <span class="font-weight-medium">ทำครั้งเดียว</span>
+                  </template>
+                </VCheckbox>
+                <p class="text-caption text-medium-emphasis mb-0 ms-8">
+                  พนักงานส่งรายงานนี้ 1 ครั้งในช่วงวันเริ่มต้น - วันสิ้นสุด แล้วจะไม่แจ้งเตือนอีกจนจบช่วงเวลา
+                  (ถ้าไม่ติ๊ก = ต้องทำทุกวัน)
+                </p>
+              </div>
+            </VCol>
             
             <VCol cols="12"><AppTextField v-model="form.name" label="ชื่องาน / รายงาน" placeholder="เช่น รายงานยอดขายประจำวัน" /></VCol>
             <VCol cols="12" sm="6"><AppSelect v-model="form.reportType" :items="REPORT_TYPES" label="ประเภทรายงาน" /></VCol>

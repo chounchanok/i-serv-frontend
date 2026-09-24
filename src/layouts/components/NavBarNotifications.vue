@@ -80,7 +80,10 @@ const fetchNotifications = async () => {
     
     if (!userData || !userData.id) return
 
-    const response = await $api(`/employee/my-tasks/${userData.id}`)
+    const res = await $api(`/employee/my-tasks/${userData.id}`)
+    // 🌟 กันกรณี API ตอบกลับมาไม่ใช่ Array (เช่น error / API ไม่ทำงาน)
+    const response = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])
+    if (!Array.isArray(res) && !Array.isArray(res?.data)) console.warn('my-tasks API ตอบกลับไม่ใช่ Array:', res)
     const d = new Date()
     const localDate = new Date(d.getTime() + (7 * 60 * 60 * 1000))
     const todayStr = localDate.toISOString().split('T')[0]
