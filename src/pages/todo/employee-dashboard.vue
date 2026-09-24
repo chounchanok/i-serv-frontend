@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { $api } from '@/utils/api' // นำเข้า $api เพื่อใช้ยิง API
+import { $api } from '@/utils/taskApi' // นำเข้า $api เพื่อใช้ยิง API
 
 // หากต้องการใช้ VueApexCharts ในไฟล์นี้ (ถ้าไม่ได้ลงทะเบียน Global ไว้)
 // import VueApexCharts from 'vue3-apexcharts'
@@ -27,7 +27,7 @@ const fetchTasks = async () => {
     }
 
     // 2. ส่ง userId ไปทาง Query String (?userId=...)
-    const response = await $api(`/employee/my-tasks?userId=${userData.id}`)
+    const response = await $api(`/employee/my-tasks/${userData.id}`)
     
     // 3. Map ข้อมูล (อัปเดตตรง brand ให้แสดง Group แทน เพราะ Backend เราเซฟ Group ID ลงไปใน column target_brands)
     myTasks.value = response.map(item => ({

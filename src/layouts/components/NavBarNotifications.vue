@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { $api } from '@/utils/api'
+import { $api } from '@/utils/taskApi'
 
 const isModalVisible = ref(false)
 const pendingTasks = ref([])

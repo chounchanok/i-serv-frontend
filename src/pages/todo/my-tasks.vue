@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { $api } from '@/utils/api'
+import { $api } from '@/utils/taskApi'
 
 const myTasks = ref([])
 const expandedId = ref(null)

@@ -104,7 +104,6 @@ export default defineConfig({
   },
   define: { 'process.env': {} },
   resolve: {
-  	dedupe: ['vue', 'vuetify'],
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@themeConfig': fileURLToPath(new URL('./themeConfig.js', import.meta.url)),
@@ -120,11 +119,6 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 5000,
-    rollupOptions: {
-      output: {
-        manualChunks: undefined // 👈 disable manual chunking that causes duplicate declarations
-      }
-    }
   },
   optimizeDeps: {
     exclude: ['vuetify'],

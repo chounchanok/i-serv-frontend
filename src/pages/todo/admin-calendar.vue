@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
-import { $api } from '@/utils/api'
+import { $api } from '@/utils/taskApi'
 
 // --- Constants ---
 const REPORT_TYPES = ['OOS', 'Stock', 'Offtake', '12 Weeks', 'Price', 'Promotion', 'Compliance', 'Extra Compliance']
