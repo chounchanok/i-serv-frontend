@@ -13,30 +13,34 @@ const apiClient = axios.create({
 // 🌟 เพิ่ม Interceptor: ดักจับก่อนที่ Request จะถูกส่งออกไป เพื่อแนบ Header
 apiClient.interceptors.request.use(
   (config) => {
-    // 1. ลองดึง Token จาก localStorage (Template ส่วนใหญ่มักเก็บข้อมูลไว้ที่นี่)
-    const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-    
-    // 2. ลองดึง Token จาก Cookie (สำหรับกรณีที่ไม่ได้ถูกตั้งค่าเป็น HTTP-Only)
-    const getCookie = (name) => {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(';').shift();
-      return null;
-    };
-    const cookieToken = getCookie('accessToken') || getCookie('_accessToken');
-
-    // เลือกใช้ Token ตัวที่หาเจอ
-    const finalToken = token || cookieToken;
-
-    // ถ้าเจอ Token ให้แนบเข้าไปใน Header
-    if (finalToken) {
-      config.headers.Authorization = `Bearer ${finalToken}`;
+    // 🌟 ดึง Base URL ล่าสุดจาก LocalStorage ทุก Request
+    const dynamicBaseUrl = localStorage.getItem('apiBaseUrl')
+    if (dynamicBaseUrl) {
+      config.baseURL = dynamicBaseUrl
     }
 
-    return config;
+    // 1. ดึง Token
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
+    
+    // 2. ดึงจาก Cookie
+    const getCookie = (name) => {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) return parts.pop().split(';').shift()
+      return null
+    }
+    const cookieToken = getCookie('accessToken') || getCookie('_accessToken')
+
+    const finalToken = token || cookieToken
+
+    if (finalToken) {
+      config.headers.Authorization = `Bearer ${finalToken}`
+    }
+
+    return config
   },
   (error) => {
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
 )
 
