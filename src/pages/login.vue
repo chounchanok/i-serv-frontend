@@ -86,7 +86,7 @@ const login = async () => {
           }
         }
         const { accessToken, userData, userAbilityRules } = res
-        console.log(userData);
+        
         useCookie('userAbilityRules').value = userAbilityRules
         ability.update(userAbilityRules)
         useCookie('userData').value = userData
@@ -94,32 +94,26 @@ const login = async () => {
         localStorage.setItem('userData', JSON.stringify(userData))
         localStorage.setItem('accessToken', accessToken)
 
+        if (userData.group_customer_id === 10 || userData.group_customer_id === '10') {
+            localStorage.setItem('apiBaseUrl', 'https://mj-api.iservreport.com');
+        } else {
+            localStorage.setItem('apiBaseUrl', 'https://api.iservreport.com'); 
+        }
+
         Swal.fire({
             title: "ยินดีต้อนรับเข้าสู่ระบบ",
             icon: "success",
             timer: 3000,
             timerProgressBar: true,
             didOpen: () => Swal.showLoading(),
-            willClose: () => window.location.reload()
+            // 🌟 2. เปลี่ยนจาก window.location.reload() เป็น window.location.href ไปที่หน้าแรก
+            // เพื่อให้สลับ URL และเปลี่ยนหน้าพร้อมกัน
+            willClose: () => {
+              const targetPath = route.query.to ? String(route.query.to) : '/';
+              window.location.href = targetPath;
+            }
         });
-
-        // Swal.fire({
-        //     title: "กรอกข้อมูลตามความเป็นจริง",
-        //     text: "และตรวจสอบความถูกต้องก่อนบันทึก",
-        //     icon: "success",
-        //     timer: 3000,
-        //     timerProgressBar: true,
-        //     // didOpen: () => Swal.showLoading(),
-        //     // willClose: () => window.location.reload()
-        // });
         
-
-        nextTick(() => {
-          setTimeout(() => {
-            router.replace(route.query.to ? String(route.query.to) : '/');
-          }, 3000);
-          
-        });
       }else{
         Swal.fire({
             title: "ไม่สามารถเข้าระบบได้",

@@ -1,10 +1,13 @@
 import axios from 'axios'
 
+// 🌟 1. อ่าน URL จาก LocalStorage ก่อน ถ้าไม่มีในระบบให้ใช้ Default (Main API)
+const activeApiUrl = localStorage.getItem('apiBaseUrl') || import.meta.env.VITE_API_URL;
+
 // สร้าง instance ของ axios พร้อม config กลาง
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // URL หลักของ API
+  baseURL: activeApiUrl, // 🌟 2. ใช้ URL ที่ดึงมาจากการเช็คด้านบน
   timeout: 600000, // กำหนด timeout เป็น 600,000 ms = 10 นาที สำหรับทุก request
-  withCredentials: true, // 🌟 อนุญาตให้เบราว์เซอร์แนบ Cookie (ที่มี Token) ไปด้วยอัตโนมัติ
+  withCredentials: true, // อนุญาตให้เบราว์เซอร์แนบ Cookie ไปด้วยอัตโนมัติ
 })
 
 // 🌟 เพิ่ม Interceptor: ดักจับก่อนที่ Request จะถูกส่งออกไป เพื่อแนบ Header

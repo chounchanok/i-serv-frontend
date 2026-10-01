@@ -28,6 +28,9 @@ const logout = async () => {
   localStorage.removeItem('userData');
   localStorage.removeItem('userAbilityRules');
 
+  // 🌟 เพิ่มบรรทัดนี้ เพื่อลบ URL ตอน Logout
+  localStorage.removeItem('apiBaseUrl');
+
   // Reset ability to initial ability
   ability.update([])
 
