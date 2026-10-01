@@ -6,25 +6,35 @@ const ability = useAbility()
 
 // TODO: Get type from backend
 const userData = useCookie('userData')
+
 const logout = async () => {
-
-  // Remove "accessToken" from cookie
+  // 🌟 1. ล้างข้อมูลด้วย useCookie (วิธีของ Template)
   useCookie('accessToken').value = null
-
-  // Remove "userData" from cookie
+  useCookie('_accessToken').value = null // เผื่อกรณี Admin
+  useCookie('refreshToken').value = null
+  useCookie('_refreshToken').value = null
+  useCookie('userAbilityRules').value = null
   userData.value = null
 
-  // Redirect to login page
-  await router.push('/login')
+  // 🌟 2. ย้ำการลบ Cookie ด้วยคำสั่งของ Browser โดยตรง (เพื่อให้ชัวร์ว่าหายจากระบบ 100%)
+  const cookiesToClear = ['accessToken', '_accessToken', 'refreshToken', '_refreshToken', 'userData', 'userAbilityRules'];
+  cookiesToClear.forEach(cookieName => {
+    document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+  });
 
-  // ℹ️ We had to remove abilities in then block because if we don't nav menu items mutation is visible while redirecting user to login page
-
-  // Remove "userAbilities" from cookie
-  useCookie('userAbilityRules').value = null
+  // 🌟 3. เคลียร์ LocalStorage เผื่อมีหลงเหลือ
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('_accessToken');
+  localStorage.removeItem('userData');
+  localStorage.removeItem('userAbilityRules');
 
   // Reset ability to initial ability
   ability.update([])
+
+  // Redirect to login page
+  await router.push('/login')
 }
+
 const userProfileList = [];
 // const userProfileList = [
 //   { type: 'divider' },

@@ -4,7 +4,38 @@ import axios from 'axios'
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL, // URL หลักของ API
   timeout: 600000, // กำหนด timeout เป็น 600,000 ms = 10 นาที สำหรับทุก request
+  withCredentials: true, // 🌟 อนุญาตให้เบราว์เซอร์แนบ Cookie (ที่มี Token) ไปด้วยอัตโนมัติ
 })
+
+// 🌟 เพิ่ม Interceptor: ดักจับก่อนที่ Request จะถูกส่งออกไป เพื่อแนบ Header
+apiClient.interceptors.request.use(
+  (config) => {
+    // 1. ลองดึง Token จาก localStorage (Template ส่วนใหญ่มักเก็บข้อมูลไว้ที่นี่)
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+    
+    // 2. ลองดึง Token จาก Cookie (สำหรับกรณีที่ไม่ได้ถูกตั้งค่าเป็น HTTP-Only)
+    const getCookie = (name) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    };
+    const cookieToken = getCookie('accessToken') || getCookie('_accessToken');
+
+    // เลือกใช้ Token ตัวที่หาเจอ
+    const finalToken = token || cookieToken;
+
+    // ถ้าเจอ Token ให้แนบเข้าไปใน Header
+    if (finalToken) {
+      config.headers.Authorization = `Bearer ${finalToken}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+)
 
 export default {
   // ตัวอย่างการเรียก API
@@ -185,9 +216,6 @@ export default {
   import_reasonfornotgettingspace(data) {
     return apiClient.post('/api/backend/import_reasonfornotgettingspace', data)
   },
-  import_reasonfornotgettingspace(data) {
-    return apiClient.post('/api/backend/import_reasonfornotgettingspace', data)
-  },
   import_promotion(data) {
     return apiClient.post('/api/backend/import_promotion', data)
   },
@@ -233,8 +261,6 @@ export default {
   update_MapUserArea(id, data) {
     return apiClient.put(`/api/backend/update_MapUserArea/${id}`, data)
   },
-
-
   delete_MapProductStore(id, data) {
     return apiClient.put(`/api/backend/delete_MapProductStore/${id}`, data)
   },
@@ -301,10 +327,6 @@ export default {
   get_all_product_filter(data) {
     return apiClient.post('/api/backend/get_all_product_filter', data)
   },
-
-  // get_all_group_customer(data) {
-  //   return apiClient.get('/api/backend/get_all_group_customer',data);
-  // },
   update_reason_isActive(id, data) {
     return apiClient.put(`/api/backend/update_reason_isActive/${id}`, data)
   },
@@ -359,11 +381,9 @@ export default {
   import_posm(data) {
     return apiClient.post(`/api/backend/import_posm`, data)
   },
-
   get_all_Noteoosstock_filter(data) {
     return apiClient.post(`/api/backend/get_all_Noteoosstock_filter`, data)
   },
-
   get_all_position(data) {
     return apiClient.post(`/api/backend/get_all_position`, data)
   },
@@ -379,7 +399,6 @@ export default {
   import_position(data) {
     return apiClient.post(`/api/backend/import_position`, data)
   },
-
   get_all_Offtake(data) {
     return apiClient.post(`/api/backend/get_all_Offtake`, data)
   },
@@ -392,7 +411,6 @@ export default {
   get_all_Offtake_date(data) {
     return apiClient.post(`/api/backend/get_all_Offtake_date`, data)
   },
-
   get_all_Compliance(data) {
     return apiClient.post(`/api/backend/get_all_Compliance`, data)
   },
@@ -537,15 +555,6 @@ export default {
   dashboard_premium_test(data) {
     return apiClient.post('/api/backend/dashboard_premium_test', data)
   },
-
-
-
-
-
-
-
-  
-
   changepassword(data) {
     return apiClient.post('/api/backend/changepassword', data)
   },
@@ -585,30 +594,18 @@ export default {
   get_all_filters_products_premium(data) {
     return apiClient.post('/api/backend/get_all_filters_products_premium', data)
   },
-
-  // createPlacementPoint(data) {
-  //   return apiClient.post('/api/backend/createPlacementPoint', data);
-  // },
-  // updatePlacementPoint(id, data) {
-  //   return apiClient.put(`/api/backend/updatePlacementPoint/${id}`, data);
-  // },
-
   create_store(data) {
     return apiClient.post('/api/backend/create_store', data)
   },
-
   update_store(id, data) {
     return apiClient.put(`/api/backend/update_store/${id}`, data)
   },
-
   get_all_job_position(data) {
     return apiClient.post('/api/backend/get_all_job_position', data)
   },
-
   create_account(data) {
     return apiClient.post('/api/backend/create_account', data)
   },
-
   update_account(id, data) {
     return apiClient.put(`/api/backend/update_account/${id}`, data)
   },
@@ -625,7 +622,7 @@ export default {
     return apiClient.post(`/api/backend/create_area_manager`, data)
   },
   update_area_manager_isActive(id, data) {
-    return apiClient.put(`/api/backend/update_area_manager/${id}`, data)
+    return apiClient.put(`/api/backend/update_area_manager_isActive/${id}`, data)
   },
   update_account_isActive(id, data) {
     return apiClient.put(`/api/backend/update_account_isActive/${id}`, data)
@@ -642,7 +639,6 @@ export default {
   create_area_supervisor(data) {
     return apiClient.post(`/api/backend/create_area_supervisor`, data)
   },
-
   update_brand_isActive(id, data) {
     return apiClient.put(`/api/backend/update_brand_isActive/${id}`, data)
   },
@@ -840,7 +836,6 @@ export default {
   renew_product_week(data) {
     return apiClient.post('/api/backend/renew_product_week', data)
   },
-
   save_all_ComplianceListExtra(formData) {
     return apiClient.post('/api/backend/save_all_ComplianceListExtra', formData, {
       headers: {
@@ -848,7 +843,6 @@ export default {
       },
     })
   },
-
   get_account_by_user_position(data) {
     return apiClient.post('/api/backend/get_account_by_user_position', data)
   },
