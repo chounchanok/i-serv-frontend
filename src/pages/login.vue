@@ -94,7 +94,7 @@ const login = async () => {
         localStorage.setItem('userData', JSON.stringify(userData))
         localStorage.setItem('accessToken', accessToken)
 
-        if (userData.groupId === 10 || userData.groupId === '10') {
+        if (userData.group_customer_id === 10 || userData.group_customer_id === '10') {
             localStorage.setItem('apiBaseUrl', 'https://mj-api.iservreport.com');
         } else {
             localStorage.setItem('apiBaseUrl', 'https://api.iservreport.com'); 
