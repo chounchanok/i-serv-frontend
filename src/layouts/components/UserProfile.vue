@@ -36,6 +36,8 @@ const logout = async () => {
 
   // Redirect to login page
   await router.push('/login')
+
+  window.location.href = '/login';
 }
 
 const userProfileList = [];
