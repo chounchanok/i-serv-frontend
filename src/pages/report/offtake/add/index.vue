@@ -911,7 +911,7 @@ export default {
 
         this.$nextTick(function(){
           const userData = useCookie('userData')
-          this.apiurl = import.meta.env.VITE_API_URL;
+          this.apiurl = localStorage.getItem('apiBaseUrl') || import.meta.env.VITE_API_URL;
           this.userData = userData.value;
           // Swal.fire({
           //   title: 'อยู๋ระหว่างการพัฒนา!',

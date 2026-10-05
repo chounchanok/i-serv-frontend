@@ -1572,7 +1572,7 @@ export default {
       const userData = useCookie('userData')
 
       this.userData = userData.value
-      this.apiurl = import.meta.env.VITE_API_URL
+      this.apiurl = localStorage.getItem('apiBaseUrl') || import.meta.env.VITE_API_URL;
       console.log(this.userData)
       this.getall()
       this.updateDatePickerConfig()
