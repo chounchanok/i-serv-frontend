@@ -89,7 +89,7 @@ const hideTitleAndIcon = configStore.isVerticalNavMini(isHovered)
         >
         <Img
           :height="50"
-          src="/images/Logo I-Serv.svg"
+          src="https://iservreport.com/images/Logo%20I-Serv.svg"
           class="mx-auto"
         />
         </RouterLink>

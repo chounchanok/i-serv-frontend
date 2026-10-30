@@ -4,7 +4,7 @@ import { breakpointsVuetify } from '@vueuse/core'
 export const layoutConfig = {
   app: {
     title: 'my-layout',
-    logo: h('img', { src: '/src/assets/Logo I-Serv.svg' }),
+    logo: h('img', { src: 'https://iservreport.com/images/Logo%20I-Serv.svg' }),
     contentWidth: ContentWidth.Boxed,
     contentLayoutNav: AppContentLayoutNav.Vertical,
     overlayNavFromBreakpoint: breakpointsVuetify.md,
